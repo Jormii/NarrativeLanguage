@@ -1,6 +1,2 @@
-def error(line: int, message: str):
-    report(line, None, message)
-
-
-def report(line: int, where: str, message: str):
-    print("[Line {}]: Error {}: {}", line, where, message)
+def error(line, message):
+    print("[Line {}] Error: {}".format(line, message))

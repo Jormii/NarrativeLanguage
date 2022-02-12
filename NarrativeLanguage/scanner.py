@@ -1,5 +1,3 @@
-from typing import List, Literal
-
 from NarrativeLanguage import token, reporting
 
 
@@ -7,18 +5,18 @@ class StringTraversal:
 
     EOS = -1
 
-    def __init__(self, string: str) -> None:
+    def __init__(self, string):
         self.string = string
 
         self._pos = 0
 
-    def current_index(self) -> int:
+    def current_index(self):
         return self._pos
 
-    def at_end(self) -> bool:
+    def at_end(self):
         return self._pos >= len(self.string)
 
-    def get(self) -> str:
+    def get(self):
         if self.at_end():
             return StringTraversal.EOS
 
@@ -31,14 +29,14 @@ class StringTraversal:
 
         return c
 
-    def get_and_advance(self) -> str:
+    def get_and_advance(self):
         if self.at_end():
             return StringTraversal.EOS
 
         self._pos += 1
         return self.string[self._pos - 1]
 
-    def match_and_if_so_advance(self, char: str) -> bool:
+    def match_and_if_so_advance(self, char):
         if self.at_end():
             return False
 
@@ -84,31 +82,37 @@ class Scanner:
         "FLOAT": token.TokenType.FLOAT_KEYWORD
     }
 
-    def __init__(self, source_code: str) -> None:
+    def __init__(self, source_code):
         self.source_code = source_code
-        self.traversal = StringTraversal(source_code)
-        self.tokens: List[token.Token] = []
+        self.tokens = []
 
         self._line = 1
+        self._column = 1
         self._start = 0     # Index a token starts at
+        self._traversal = StringTraversal(source_code)
 
     def scan(self):
-        while not self.traversal.at_end():
-            self._start = self.traversal.current_index()
+        while not self._traversal.at_end():
+            self._start = self._traversal.current_index()
             self._scan_token()
 
-        eof_token = token.Token(token.TokenType.EOF, "", None, self._line)
+        eof_token = token.Token(token.TokenType.EOF, "",
+                                None, self._line, self._column)
         self.tokens.append(eof_token)
 
     def _scan_token(self):
-        c = self.traversal.get_and_advance()
+        c = self._traversal.get_and_advance()
         if c in Scanner.WHITESPACES:
-            self._line += c == '\n'
+            if c == '\n':
+                self._line += 1
+                self._column = 1
+            else:
+                self._column += 1
         elif c in Scanner.SINGLE_TOKENS_MAPPING:
             token_type = Scanner.SINGLE_TOKENS_MAPPING[c]
             self._add_simple_token(token_type)
         elif c in Scanner.SINGLE_OR_PAIR_TOKENS_MAPPING:
-            match = self.traversal.match_and_if_so_advance('=')
+            match = self._traversal.match_and_if_so_advance('=')
             token_type = Scanner.SINGLE_OR_PAIR_TOKENS_MAPPING[c][match]
             self._add_simple_token(token_type)
         elif self._is_alpha(c) or c == '_':
@@ -124,40 +128,43 @@ class Scanner:
             reporting.error(self._line, "Unexpected character '{}'".format(c))
 
     def _scan_identifier(self):
-        while self._is_identifier(self.traversal.get()):
-            self.traversal.get_and_advance()
+        while self._is_identifier(self._traversal.get()):
+            self._traversal.get_and_advance()
 
         self._add_simple_token(token.TokenType.IDENTIFIER)
 
     def _scan_string(self):
-        while not self.traversal.at_end() and self.traversal.get() != '\"':
-            self._line += self.traversal.get() == '\n'
-            self.traversal.get_and_advance()
+        while not self._traversal.at_end() and self._traversal.get() != '\"':
+            if self._traversal.get() == '\n':
+                self._line += 1
+                self._column = 1
 
-        if self.traversal.at_end():
+            self._traversal.get_and_advance()
+
+        if self._traversal.at_end():
             substring = self.source_code[self._start:]
             reporting.error(
                 self._line, "Unterminated string: {}".format(substring))
 
-        self.traversal.get_and_advance()    # Consume closing '\"'
+        self._traversal.get_and_advance()    # Consume closing '\"'
 
         value = self.source_code[
-            self._start + 1: self.traversal.current_index() - 1]
+            self._start + 1: self._traversal.current_index() - 1]
         self._add_token(token.TokenType.STRING, value)
 
     def _scan_number(self):
-        while self._is_digit(self.traversal.get()):
-            self.traversal.get_and_advance()
+        while self._is_digit(self._traversal.get()):
+            self._traversal.get_and_advance()
 
-        is_float = self.traversal.get() == '.'
-        if is_float and self._is_digit(self.traversal.peek()):
-            self.traversal.get_and_advance()    # Consume '.'
+        is_float = self._traversal.get() == '.'
+        if is_float and self._is_digit(self._traversal.peek()):
+            self._traversal.get_and_advance()    # Consume '.'
 
-            while self._is_digit(self.traversal.get()):
-                self.traversal.get_and_advance()
+            while self._is_digit(self._traversal.get()):
+                self._traversal.get_and_advance()
 
         substring = self.source_code[
-            self._start:self.traversal.current_index()]
+            self._start:self._traversal.current_index()]
         if is_float:
             token_type = token.TokenType.FLOAT
             value = float(substring)
@@ -167,25 +174,29 @@ class Scanner:
 
         self._add_token(token_type, value)
 
-    def _add_simple_token(self, token_type: token.TokenType):
+    def _add_simple_token(self, token_type):
         self._add_token(token_type, None)
 
-    def _add_token(self, token_type: token.TokenType, literal: Literal):
-        lexeme = self.source_code[self._start: self.traversal.current_index()]
-        new_token = token.Token(token_type, lexeme, literal, self._line)
-        self.tokens.append(new_token)
+    def _add_token(self, token_type, literal):
+        lexeme = self.source_code[self._start: self._traversal.current_index()]
+        column = self._column
+        new_token = token.Token(
+            token_type, lexeme, literal, self._line, column)
 
-    def _is_alpha(self, c: str):
+        self.tokens.append(new_token)
+        self._column += len(lexeme)
+
+    def _is_alpha(self, c):
         if c == StringTraversal.EOS:
             return False
 
         return c.isalpha()
 
-    def _is_digit(self, c: str):
+    def _is_digit(self, c):
         if c == StringTraversal.EOS:
             return False
 
         return c.isdigit()
 
-    def _is_identifier(self, c: str):
+    def _is_identifier(self, c):
         return self._is_alpha(c) or self._is_digit(c) or c == '_'

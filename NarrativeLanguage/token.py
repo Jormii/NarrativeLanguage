@@ -1,4 +1,3 @@
-from typing import Literal
 from enum import auto, Enum
 
 
@@ -45,15 +44,17 @@ class TokenType(Enum):
 
 class Token:
 
-    def __init__(self, type: TokenType, lexeme: str, literal: Literal, line: int) -> None:
+    def __init__(self, type, lexeme, literal, line, column):
         self.type = type
         self.lexeme = lexeme
         self.literal = literal
         self.line = line
+        self.column = column
 
-    def __repr__(self) -> str:
-        return "Token [{}]: {}, {}, {}".format(
+    def __repr__(self):
+        return "Token [L{}, C{}]: {} | {} | {}".format(
             self.line,
+            self.column,
             self.lexeme if self.lexeme else "_",
             self.literal,
             self.type
