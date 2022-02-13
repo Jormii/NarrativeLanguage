@@ -9,6 +9,12 @@ class LiteralExpr(IExpression):
         self.token = token
 
 
+class VariableExpr(IExpression):
+
+    def __init__(self, identifier_token):
+        self.identifier_token = identifier_token
+
+
 class UnaryExpr(IExpression):
 
     def __init__(self, operator, expression):

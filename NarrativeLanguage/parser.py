@@ -57,7 +57,7 @@ class Parser:
         try:
             while not self._traversal.at_end():
                 pos = self._traversal._pos
-                stmt = self._statement()
+                stmt = self._declaration()
                 self.statements.append(stmt)
         except Exception as e:
             token = self.tokens[pos]
@@ -67,8 +67,36 @@ class Parser:
             print(e)
             exit()
 
+    def _declaration(self):
+        if self._traversal.match_and_if_so_advance([TokenType.INT_KEYWORD, TokenType.FLOAT_KEYWORD]):
+            return self._variable_declaration()
+        else:
+            return self._statement()
+
+    def _variable_declaration(self):
+        type_token = self._traversal.previous()
+        identifier_token = self._traversal.get_and_advance()
+        initializer_expr = None
+        if self._traversal.match_and_if_so_advance([TokenType.EQUAL]):
+            initializer_expr = self._expression()
+
+        return statement.VariableStmt(type_token, identifier_token, initializer_expr)
+
     def _statement(self):
+        if self._traversal.match_and_if_so_advance([TokenType.LEFT_BRACE]):
+            return self._block()
+
         return self._expression_statement()
+
+    def _block(self):
+        statements = []
+        while not self._traversal.match(TokenType.RIGHT_BRACE) and not self._traversal.at_end():
+            statements.append(self._declaration())
+
+        assert self._traversal.match_and_if_so_advance([TokenType.RIGHT_BRACE]), \
+            "Expected closing '}'"
+
+        return statement.BlockStmt(statements)
 
     def _expression_statement(self):
         expr = self._expression()
@@ -130,6 +158,9 @@ class Parser:
     def _primary(self):
         if self._traversal.match_and_if_so_advance(Parser.LITERAL_TOKENS):
             return expression.LiteralExpr(self._traversal.previous())
+
+        if self._traversal.match_and_if_so_advance([TokenType.IDENTIFIER]):
+            return expression.VariableExpr(self._traversal.previous())
 
         if self._traversal.match_and_if_so_advance([TokenType.LEFT_PARENTHESIS]):
             expr = self._expression()

@@ -4,8 +4,10 @@ class Visitor:
         self._cb = {}
 
     def submit(self, type, callback):
-        self._cb[type] = callback
+        assert type not in self._cb, \
+            "Callback already defined for type {}".format(type)
 
+        self._cb[type] = callback
         return self
 
     def visit(self, obj):
