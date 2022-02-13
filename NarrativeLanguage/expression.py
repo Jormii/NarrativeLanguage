@@ -1,7 +1,6 @@
 class IExpression:
 
-    def __repr__(self):
-        return
+    pass
 
 
 class LiteralExpr(IExpression):

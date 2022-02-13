@@ -19,11 +19,9 @@ def main():
         print(100 * "-")
 
         parse = parser.Parser(scan.tokens)
-        expr = parse.parse()
-        print("\"{}\" = {}".format(
-            FORMATTER.visit(expr),
-            INTERPRETER.visit(expr)
-        ))
+        parse.parse()
+        for stmt in parse.statements:
+            print(FORMATTER.visit(stmt))
 
 
 if __name__ == "__main__":

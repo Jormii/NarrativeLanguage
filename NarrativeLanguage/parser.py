@@ -1,4 +1,4 @@
-from NarrativeLanguage import expression, reporting
+from NarrativeLanguage import expression, statement, reporting
 from NarrativeLanguage.token import TokenType
 
 
@@ -49,20 +49,32 @@ class Parser:
 
     def __init__(self, tokens):
         self.tokens = tokens
+        self.statements = []
 
         self._traversal = TokenTraversal(tokens)
 
     def parse(self):
         try:
-            pos = self._traversal._pos
-            return self._expression()
+            while not self._traversal.at_end():
+                pos = self._traversal._pos
+                stmt = self._statement()
+                self.statements.append(stmt)
         except Exception as e:
             token = self.tokens[pos]
             reporting.error(
-                token.line, "Parsing expression starting at {}".format(token))
+                token.line, "Parsing statement starting at {}".format(token))
 
             print(e)
             exit()
+
+    def _statement(self):
+        return self._expression_statement()
+
+    def _expression_statement(self):
+        expr = self._expression()
+        stmt = statement.ExpressionStmt(expr)
+
+        return stmt
 
     def _expression(self):
         return self._equality()
