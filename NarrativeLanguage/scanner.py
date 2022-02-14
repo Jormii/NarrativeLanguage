@@ -57,29 +57,31 @@ class Scanner:
         ')': token.TokenType.RIGHT_PARENTHESIS,
         '{': token.TokenType.LEFT_BRACE,
         '}': token.TokenType.RIGHT_BRACE,
-        ',': token.TokenType.COMMA,
-        '-': token.TokenType.MINUS,
         '+': token.TokenType.PLUS,
-        '/': token.TokenType.SLASH,
+        '-': token.TokenType.MINUS,
         '*': token.TokenType.STAR,
-        '#': token.TokenType.POUND
+        '/': token.TokenType.SLASH,
+        '#': token.TokenType.POUND,
+        ',': token.TokenType.COMMA,
+        ';': token.TokenType.SEMICOLON
     }
 
     SINGLE_OR_PAIR_TOKENS_MAPPING = {
-        '!': (token.TokenType.BANG, token.TokenType.BANG_EQUAL),
         '=': (token.TokenType.EQUAL, token.TokenType.EQUAL_EQUAL),
-        '>': (token.TokenType.LESS, token.TokenType.LESS_EQUAL),
-        '<': (token.TokenType.GREATER, token.TokenType.GREATER_EQUAL)
+        '!': (token.TokenType.BANG, token.TokenType.BANG_EQUAL),
+        '<': (token.TokenType.LESS, token.TokenType.LESS_EQUAL),
+        '>': (token.TokenType.GREATER, token.TokenType.GREATER_EQUAL)
     }
 
     KEYWORDS_MAPPING = {
-        "AND": token.TokenType.AND,
-        "OR": token.TokenType.OR,
+        "INT": token.TokenType.INT_KEYWORD,
+        "FLOAT": token.TokenType.FLOAT_KEYWORD,
+        "STR": token.TokenType.STRING_KEYWORD,
         "IF": token.TokenType.IF,
         "ELIF": token.TokenType.ELIF,
         "ELSE": token.TokenType.ELSE,
-        "INT": token.TokenType.INT_KEYWORD,
-        "FLOAT": token.TokenType.FLOAT_KEYWORD
+        "AND": token.TokenType.AND,
+        "OR": token.TokenType.OR
     }
 
     def __init__(self, source_code):

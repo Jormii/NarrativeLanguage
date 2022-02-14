@@ -11,18 +11,30 @@ def _tabs():
 # region Statements
 
 
+def _format_print_stmt(stmt):
+    return "{}PRINT: {};".format(_tabs(), stmt.string_token.lexeme)
+
+
 def _format_expression_stmt(stmt):
-    return "{}{}".format(_tabs(), FORMATTER.visit(stmt.expr))
+    return "{}{};".format(_tabs(), FORMATTER.visit(stmt.expr))
 
 
-def _format_variable_stmt(stmt):
-    formatted = "{}{} {}".format(
-        _tabs(), stmt.type_token.lexeme, stmt.identifier_token.lexeme)
-    if stmt.initializer_expr is not None:
-        formatted = "{} = {}".format(
-            formatted, FORMATTER.visit(stmt.initializer_expr))
+def _format_macro_declaration_stmt(stmt):
+    return "#{}".format(FORMATTER.visit(stmt.declaration_stmt))
 
-    return formatted
+
+def _format_variable_declaration_stmt(stmt):
+    return "{}{} {} = {};".format(
+        _tabs(),
+        stmt.type_token.lexeme,
+        stmt.identifier_token.lexeme,
+        FORMATTER.visit(stmt.initializer_expr)
+    )
+
+
+def _format_assignment_stmt(stmt):
+    return "{}${} = {};".format(
+        _tabs(), stmt.identifier_token.lexeme, FORMATTER.visit(stmt.assigment_expr))
 
 
 def _format_block_stmt(stmt):
@@ -31,8 +43,8 @@ def _format_block_stmt(stmt):
     formatted = "{}{{\n".format(_tabs())
     DEPTH += 1
 
-    for sub_stmt in stmt.statements:
-        formatted = "{}{}\n".format(formatted, FORMATTER.visit(sub_stmt))
+    for inner_stmt in stmt.statements:
+        formatted = "{}{}\n".format(formatted, FORMATTER.visit(inner_stmt))
 
     DEPTH -= 1
     formatted = "{}{}}}".format(formatted, _tabs())
@@ -40,44 +52,92 @@ def _format_block_stmt(stmt):
     return formatted
 
 
-FORMATTER.submit(statement.ExpressionStmt, _format_expression_stmt) \
-    .submit(statement.VariableStmt, _format_variable_stmt) \
-    .submit(statement.BlockStmt, _format_block_stmt)
+def _format_condition_stmt(stmt):
+    formatted = "{}IF ({}) {}".format(
+        _tabs(),
+        FORMATTER.visit(stmt.if_condition),
+        FORMATTER.visit(stmt.if_block)
+    )
+
+    for i in range(len(stmt.elifs_blocks)):
+        c = stmt.elifs_conditions[i]
+        b = stmt.elifs_blocks[i]
+        formatted = "{} ELIF ({}) {}".format(
+            formatted, FORMATTER.visit(c), FORMATTER.visit(b))
+
+    if stmt.else_block is not None:
+        formatted = "{} ELSE {}".format(
+            formatted, FORMATTER.visit(stmt.else_block))
+
+    return formatted
+
+
+def _format_option_stmt(stmt):
+    return "{}{} = {}".format(
+        _tabs(), stmt.string_token.lexeme, FORMATTER.visit(stmt.block_stmt))
+
+
+FORMATTER.submit(statement.Print, _format_print_stmt) \
+    .submit(statement.Expression, _format_expression_stmt) \
+    .submit(statement.MacroDeclaration, _format_macro_declaration_stmt) \
+    .submit(statement.VariableDeclaration, _format_variable_declaration_stmt) \
+    .submit(statement.Assigment, _format_assignment_stmt) \
+    .submit(statement.Block, _format_block_stmt) \
+    .submit(statement.Condition, _format_condition_stmt) \
+    .submit(statement.Option, _format_option_stmt)
 
 # endregion
 
 # region Expressions
 
 
+def _format_parenthesis_expr(expr):
+    return "({})".format(FORMATTER.visit(expr.inner_expr))
+
+
 def _format_literal_expr(expr):
-    return repr(expr.token.literal)
+    return "({}) {}".format(
+        expr.literal_token.type.name,
+        expr.literal_token.lexeme
+    )
 
 
 def _format_variable_expr(expr):
-    return "${}".format(expr.identifier_token.lexeme)
+    return "{}{}".format(
+        "#" if expr.is_macro() else "$",
+        expr.identifier_token.lexeme
+    )
+
+
+def _format_function_call_expr(expr):
+    formatted_args = []
+    for arg in expr.arguments:
+        formatted_args.append(FORMATTER.visit(arg))
+
+    return "{}({})".format(
+        expr.identifier_token.lexeme, ", ".join(formatted_args))
 
 
 def _format_unary_expr(expr):
     return "{}{}".format(
-        expr.operator.lexeme, FORMATTER.visit(expr.expression))
+        expr.operator_token.lexeme,
+        FORMATTER.visit(expr.expr)
+    )
 
 
 def _format_binary_expr(expr):
     return "{} {} {}".format(
-        FORMATTER.visit(expr.left),
-        expr.operator.lexeme,
-        FORMATTER.visit(expr.right)
+        FORMATTER.visit(expr.left_expr),
+        expr.operator_token.lexeme,
+        FORMATTER.visit(expr.right_expr)
     )
 
 
-def _format_grouping_expr(expr):
-    return "({})".format(FORMATTER.visit(expr.expression))
-
-
-FORMATTER.submit(expression.LiteralExpr, _format_literal_expr) \
-    .submit(expression.VariableExpr, _format_variable_expr) \
-    .submit(expression.UnaryExpr, _format_unary_expr) \
-    .submit(expression.BinaryExpr, _format_binary_expr) \
-    .submit(expression.GroupingExpr, _format_grouping_expr)
+FORMATTER.submit(expression.Parenthesis, _format_parenthesis_expr) \
+    .submit(expression.Literal, _format_literal_expr) \
+    .submit(expression.Variable, _format_variable_expr) \
+    .submit(expression.FunctionCall, _format_function_call_expr) \
+    .submit(expression.Unary, _format_unary_expr) \
+    .submit(expression.Binary, _format_binary_expr)
 
 # endregion

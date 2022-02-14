@@ -13,6 +13,7 @@ class TokenType(Enum):
     SLASH = auto()              # /
     POUND = auto()              # '#'
     COMMA = auto()              # ,
+    SEMICOLON = auto()          # ;
 
     # One or two character tokens
     EQUAL = auto()              # =
@@ -26,13 +27,14 @@ class TokenType(Enum):
 
     # Literals
     IDENTIFIER = auto()         # aA-zZ, 0-9, '_'
-    STRING = auto()             # ""
+    STRING = auto()             # STRING s = ""
     INTEGER = auto()            # INT i = 0
     FLOAT = auto()              # FLOAT f = 0.0
 
     # Keywords
     INT_KEYWORD = auto()        # INT
     FLOAT_KEYWORD = auto()      # FLOAT
+    STRING_KEYWORD = auto()     # STRING
     IF = auto()                 # IF
     ELIF = auto()               # ELIF
     ELSE = auto()               # ELSE
@@ -50,6 +52,10 @@ class Token:
         self.literal = literal
         self.line = line
         self.column = column
+
+    @staticmethod
+    def empty():
+        return Token(None, None, None, None, None)
 
     def __repr__(self):
         return "Token [L{}, C{}]: {} | {} | {}".format(
