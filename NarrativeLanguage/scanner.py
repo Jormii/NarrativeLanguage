@@ -74,9 +74,6 @@ class Scanner:
     }
 
     KEYWORDS_MAPPING = {
-        "INT": token.TokenType.INT_KEYWORD,
-        "FLOAT": token.TokenType.FLOAT_KEYWORD,
-        "STR": token.TokenType.STRING_KEYWORD,
         "IF": token.TokenType.IF,
         "ELIF": token.TokenType.ELIF,
         "ELSE": token.TokenType.ELSE,

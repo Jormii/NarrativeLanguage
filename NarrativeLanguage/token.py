@@ -27,14 +27,11 @@ class TokenType(Enum):
 
     # Literals
     IDENTIFIER = auto()         # aA-zZ, 0-9, '_'
-    STRING = auto()             # STRING s = ""
-    INTEGER = auto()            # INT i = 0
-    FLOAT = auto()              # FLOAT f = 0.0
+    STRING = auto()             # s = ""
+    INTEGER = auto()            # i = 0
+    FLOAT = auto()              # f = 0.0
 
     # Keywords
-    INT_KEYWORD = auto()        # INT
-    FLOAT_KEYWORD = auto()      # FLOAT
-    STRING_KEYWORD = auto()     # STRING
     IF = auto()                 # IF
     ELIF = auto()               # ELIF
     ELSE = auto()               # ELSE

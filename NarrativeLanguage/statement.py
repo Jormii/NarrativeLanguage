@@ -12,14 +12,13 @@ class Expression:
 
 class MacroDeclaration:
 
-    def __init__(self, declaration_stmt):
-        self.declaration_stmt = declaration_stmt
+    def __init__(self, assignment_stmt):
+        self.assignment_stmt = assignment_stmt
 
 
 class VariableDeclaration:
 
-    def __init__(self, type_token, identifier_token, initializer_expr):
-        self.type_token = type_token
+    def __init__(self, identifier_token, initializer_expr):
         self.identifier_token = identifier_token
         self.initializer_expr = initializer_expr
 

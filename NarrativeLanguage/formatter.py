@@ -20,13 +20,12 @@ def _format_expression_stmt(stmt):
 
 
 def _format_macro_declaration_stmt(stmt):
-    return "#{}".format(FORMATTER.visit(stmt.declaration_stmt))
+    return "#{}".format(FORMATTER.visit(stmt.assignment_stmt))
 
 
 def _format_variable_declaration_stmt(stmt):
-    return "{}{} {} = {};".format(
+    return "{}{} = {};".format(
         _tabs(),
-        stmt.type_token.lexeme,
         stmt.identifier_token.lexeme,
         FORMATTER.visit(stmt.initializer_expr)
     )

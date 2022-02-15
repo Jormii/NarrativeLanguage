@@ -55,9 +55,6 @@ class TokenTraversal:
 
 class Parser:
 
-    TYPE_TOKENS = [TokenType.INT_KEYWORD,
-                   TokenType.FLOAT_KEYWORD, TokenType.STRING_KEYWORD]
-
     EQUALITY_TOKENS = [TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL]
     COMPARISON_TOKENS = [TokenType.LESS, TokenType.LESS_EQUAL,
                          TokenType.GREATER, TokenType.GREATER_EQUAL]
@@ -90,8 +87,6 @@ class Parser:
     def _statement(self):
         if self._tt.match(TokenType.POUND):
             return self._macro_declaration()
-        elif self._tt.match(Parser.TYPE_TOKENS):
-            return self._variable_declaration()
         elif self._tt.match(TokenType.IDENTIFIER):
             return self._identifier_leading_statement()
         elif self._tt.match(TokenType.STRING):
@@ -110,34 +105,13 @@ class Parser:
         assert self._tt.match_and_if_so_advance(TokenType.POUND), \
             "Expected '#' before macro"
 
-        if self._tt.match(TokenType.IDENTIFIER) and not self._tt.match(TokenType.EQUAL):
+        if self._tt.match(TokenType.IDENTIFIER) and not self._tt.peek_match(TokenType.EQUAL):
             # It's an expression
             self._tt._pos -= 1  # Undo advance caused by previous asser
             return self._expression_statement()
 
-        declaration_stmt = self._variable_declaration()
-        return statement.MacroDeclaration(declaration_stmt)
-
-    def _variable_declaration(self):
-        # FORMAT
-        # ('INT' | 'FLOAT' | 'STR') IDENTIFIER '=' EXPRESSION ';'
-        type_token = Token.empty()
-        identifier_token = Token.empty()
-
-        assert self._tt.match_and_if_so_advance(Parser.TYPE_TOKENS, type_token), \
-            "(INT | FLOAT | STR) expected before declaration"
-        assert self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, identifier_token), \
-            "Expected variable identifier"
-        assert self._tt.match_and_if_so_advance(TokenType.EQUAL), \
-            "Expected '=' after identifier"
-
-        initializer_expr = self._expression()
-
-        assert self._tt.match_and_if_so_advance(TokenType.SEMICOLON), \
-            "Expected ';' after declaration"
-
-        return statement.VariableDeclaration(
-            type_token, identifier_token, initializer_expr)
+        assignment_stmt = self._assigment()
+        return statement.MacroDeclaration(assignment_stmt)
 
     def _identifier_leading_statement(self):
         if self._tt.peek_match(TokenType.EQUAL):
@@ -147,7 +121,7 @@ class Parser:
 
     def _assigment(self):
         # FORMAT
-        # IDENTIFIER '=' EXPRESSION;
+        # IDENTIFIER '=' EXPRESSION ';'
 
         identifier_token = Token.empty()
         assert self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, identifier_token), \
