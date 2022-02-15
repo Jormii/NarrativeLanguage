@@ -16,18 +16,11 @@ class MacroDeclaration:
         self.assignment_stmt = assignment_stmt
 
 
-class VariableDeclaration:
-
-    def __init__(self, identifier_token, initializer_expr):
-        self.identifier_token = identifier_token
-        self.initializer_expr = initializer_expr
-
-
-class Assigment:
+class Assignment:
 
     def __init__(self, identifier_token, assignment_expr):
         self.identifier_token = identifier_token
-        self.assigment_expr = assignment_expr
+        self.assignment_expr = assignment_expr
 
 
 class Block:

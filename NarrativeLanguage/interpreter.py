@@ -2,72 +2,70 @@ from NarrativeLanguage import expression, statement
 from NarrativeLanguage.token import TokenType
 from NarrativeLanguage.visitor import Visitor
 
+from NarrativeLanguage.formatter import FORMATTER
+
 
 class Environment:
 
     def __init__(self, parent=None):
-        self.variables = {}
-        self.parent = parent
+        self._variables = {}
+        self._parent = parent
 
-    def exists(self, name):
-        if name in self.variables:
-            return True
-        elif self.parent is not None:
-            return self.parent.exists(name)
+    def _fetch_scope(self, name):
+        if name in self._variables:
+            return self
+        elif self._parent is not None:
+            return self._parent._fetch_scope(name)
 
-        return False
+        return None
 
-    def get(self, name):
-        if name in self.variables:
-            return self.variables[name]
-        elif self.parent is not None:
-            return self.parent.get(name)
-        else:
-            exit("Unknown variable \"{}\"".format(name))
+    def read(self, name):
+        scope = self._fetch_scope(name)
+        assert scope is not None, "Undefined variable"
 
-    def create(self, name, value):
-        assert not self.exists(name), \
-            "Variable \"{}\" already defined".format(name)
+        return scope._variables[name]
 
-        self.variables[name] = value
+    def write(self, name, value):
+        scope = self._fetch_scope(name)
+        if scope is None:
+            scope = self
 
-    def update(self, name, value):
-        if name in self.variables:
-            self.variables[name] = value
-        elif self.parent is not None:
-            self.parent.update(name, value)
-        else:
-            exit("Undefined variable \"{}\"".format(name))
+        scope._variables[name] = value
 
 
 INTERPRETER = Visitor()
+MACROS = Environment()
 ENVIRONMENT = Environment()
 
 
 # region Statements
 
 
+# endregion
+
+def _interpret_print_stmt(stmt):
+    string = stmt.string_token.literal
+    print(string)
+
+    return string
+
+
 def _interpret_expression_stmt(stmt):
     return INTERPRETER.visit(stmt.expr)
 
 
-def _interpret_variable_stmt(stmt):
-    t = stmt.type_token.type
-    if t == TokenType.STRING:
-        value = ""
-    elif t == TokenType.INT_KEYWORD:
-        value = 0
-    elif t == TokenType.FLOAT_KEYWORD:
-        value = 0.0
-    else:
-        exit("Unknown variable type {}".format(t))
+def _interpret_macro_declaration_stmt(stmt):
+    return _write_variable(stmt.assignment_stmt, MACROS)
 
-    initializer = stmt.initializer_expr
-    if initializer is not None:
-        value = INTERPRETER.visit(initializer)
 
-    name = stmt.identifier_token.lexeme
-    ENVIRONMENT.create(name, value)
+def _interpret_assignment_stmt(stmt):
+    return _write_variable(stmt, ENVIRONMENT)
+
+
+def _write_variable(assignment_stmt, environment):
+    identifier = assignment_stmt.identifier_token.lexeme
+    value = INTERPRETER.visit(assignment_stmt.assignment_expr)
+    environment.write(identifier, value)
 
     return value
 
@@ -77,48 +75,88 @@ def _interpret_block_stmt(stmt):
     OLD_ENVIRONMENT = ENVIRONMENT
     ENVIRONMENT = Environment(OLD_ENVIRONMENT)
 
-    results = []
-    for sub_stmt in stmt.statements:
-        r = INTERPRETER.visit(sub_stmt)
-        results.append(r)
+    stmts_returns = []
+    for inner_stmt in stmt.statements:
+        stmts_returns.append(INTERPRETER.visit(inner_stmt))
 
     ENVIRONMENT = OLD_ENVIRONMENT
 
-    return results
+    return stmts_returns
 
 
-INTERPRETER.submit(statement.ExpressionStmt, _interpret_expression_stmt) \
-    .submit(statement.VariableStmt, _interpret_variable_stmt) \
-    .submit(statement.BlockStmt, _interpret_block_stmt)
+def _interpret_condition_stmt(stmt):
+    if INTERPRETER.visit(stmt.if_condition):
+        return INTERPRETER.visit(stmt.if_block)
 
-# endregion
+    for i in range(len(stmt.elifs_blocks)):
+        c = stmt.elifs_conditions[i]
+        b = stmt.elifs_blocks[i]
+        if INTERPRETER.visit(c):
+            return INTERPRETER.visit(b)
+
+    if stmt.else_block is not None:
+        return INTERPRETER.visit(stmt.else_block)
+
+    return None
+
+
+def _interpret_option_stmt(stmt):
+    option_string = stmt.string_token.literal
+    print(FORMATTER.visit(stmt))
+
+    return "OPTION: {}".format(option_string)
+
+
+INTERPRETER.submit(statement.Print, _interpret_print_stmt) \
+    .submit(statement.Expression, _interpret_expression_stmt) \
+    .submit(statement.MacroDeclaration, _interpret_macro_declaration_stmt) \
+    .submit(statement.Assignment, _interpret_assignment_stmt) \
+    .submit(statement.Block, _interpret_block_stmt) \
+    .submit(statement.Condition, _interpret_condition_stmt) \
+    .submit(statement.Option, _interpret_option_stmt)
 
 # region Expressions
 
 
+def _interpret_parenthesis_expr(expr):
+    return INTERPRETER.visit(expr.inner_expr)
+
+
 def _interpret_literal_expr(expr):
-    return expr.token.literal   # TODO: Macros
+    return expr.literal_token.literal
 
 
 def _interpret_variable_expr(expr):
-    name = expr.identifier_token.lexeme
-    return ENVIRONMENT.get(name)
+    identifier = expr.identifier_token.lexeme
+    if expr.is_macro():
+        return MACROS.read(identifier)
+    else:
+        return ENVIRONMENT.read(identifier)
+
+
+def _interpret_scene_identifier_expr(expr):
+    raise NotImplementedError()
+
+
+def _interpret_function_call_expr(expr):
+    return "CALL: {}".format(FORMATTER.visit(expr))
 
 
 def _interpret_unary_expr(expr):
-    if expr.operator.token_type == TokenType.MINUS:
-        return -INTERPRETER.visit(expr.expression)
-    elif expr.operator.token_type == TokenType.BANG:
-        return not INTERPRETER.visit(expr.expression)
+    op_token = expr.operator_token.type
+    if op_token == TokenType.MINUS:
+        return -INTERPRETER.visit(expr.expr)
+    elif op_token == TokenType.BANG:
+        return not INTERPRETER.visit(expr.expr)
 
-    exit("Unknown unary operator {}".format(expr.operator))
+    exit("Unknown unary operator {}".format(expr.token))
 
 
 def _interpret_binary_expr(expr):
-    left = INTERPRETER.visit(expr.left)
-    right = INTERPRETER.visit(expr.right)
+    left = INTERPRETER.visit(expr.left_expr)
+    right = INTERPRETER.visit(expr.right_expr)
 
-    op_token = expr.operator.type
+    op_token = expr.operator_token.type
     if op_token == TokenType.PLUS:
         return left + right
     elif op_token == TokenType.MINUS:
@@ -139,18 +177,20 @@ def _interpret_binary_expr(expr):
         return left > right
     elif op_token == TokenType.GREATER_EQUAL:
         return left >= right
+    elif op_token == TokenType.AND:
+        return left and right
+    elif op_token == TokenType.OR:
+        return left or right
 
-    exit("Unknown binary operator {}".format(expr.operator))
+    exit("Unknown binary operator {}".format(expr.token))
 
 
-def _interpret_grouping_expr(expr):
-    return INTERPRETER.visit(expr.expression)
-
-
-INTERPRETER.submit(expression.LiteralExpr, _interpret_literal_expr) \
-    .submit(expression.VariableExpr, _interpret_variable_expr) \
-    .submit(expression.UnaryExpr, _interpret_unary_expr) \
-    .submit(expression.BinaryExpr, _interpret_binary_expr) \
-    .submit(expression.GroupingExpr, _interpret_grouping_expr)
+INTERPRETER.submit(expression.Parenthesis, _interpret_parenthesis_expr) \
+    .submit(expression.Literal, _interpret_literal_expr) \
+    .submit(expression.Variable, _interpret_variable_expr) \
+    .submit(expression.SceneIdentifier, _interpret_scene_identifier_expr) \
+    .submit(expression.FunctionCall, _interpret_function_call_expr) \
+    .submit(expression.Unary, _interpret_unary_expr) \
+    .submit(expression.Binary, _interpret_binary_expr)
 
 # endregion

@@ -110,16 +110,16 @@ class Parser:
             self._tt._pos -= 1  # Undo advance caused by previous asser
             return self._expression_statement()
 
-        assignment_stmt = self._assigment()
+        assignment_stmt = self._assignment()
         return statement.MacroDeclaration(assignment_stmt)
 
     def _identifier_leading_statement(self):
         if self._tt.peek_match(TokenType.EQUAL):
-            return self._assigment()
+            return self._assignment()
 
         return self._expression_statement()
 
-    def _assigment(self):
+    def _assignment(self):
         # FORMAT
         # IDENTIFIER '=' EXPRESSION ';'
 
@@ -134,7 +134,7 @@ class Parser:
         assert self._tt.match_and_if_so_advance(TokenType.SEMICOLON), \
             "Expected ';' after assignment"
 
-        return statement.Assigment(identifier_token, assignment_expr)
+        return statement.Assignment(identifier_token, assignment_expr)
 
     def _string_leading_statement(self):
         if self._tt.peek_match(TokenType.EQUAL):

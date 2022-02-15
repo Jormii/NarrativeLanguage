@@ -23,17 +23,9 @@ def _format_macro_declaration_stmt(stmt):
     return "#{}".format(FORMATTER.visit(stmt.assignment_stmt))
 
 
-def _format_variable_declaration_stmt(stmt):
-    return "{}{} = {};".format(
-        _tabs(),
-        stmt.identifier_token.lexeme,
-        FORMATTER.visit(stmt.initializer_expr)
-    )
-
-
 def _format_assignment_stmt(stmt):
     return "{}${} = {};".format(
-        _tabs(), stmt.identifier_token.lexeme, FORMATTER.visit(stmt.assigment_expr))
+        _tabs(), stmt.identifier_token.lexeme, FORMATTER.visit(stmt.assignment_expr))
 
 
 def _format_block_stmt(stmt):
@@ -79,8 +71,7 @@ def _format_option_stmt(stmt):
 FORMATTER.submit(statement.Print, _format_print_stmt) \
     .submit(statement.Expression, _format_expression_stmt) \
     .submit(statement.MacroDeclaration, _format_macro_declaration_stmt) \
-    .submit(statement.VariableDeclaration, _format_variable_declaration_stmt) \
-    .submit(statement.Assigment, _format_assignment_stmt) \
+    .submit(statement.Assignment, _format_assignment_stmt) \
     .submit(statement.Block, _format_block_stmt) \
     .submit(statement.Condition, _format_condition_stmt) \
     .submit(statement.Option, _format_option_stmt)
