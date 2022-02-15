@@ -57,6 +57,8 @@ class Scanner:
         ')': token.TokenType.RIGHT_PARENTHESIS,
         '{': token.TokenType.LEFT_BRACE,
         '}': token.TokenType.RIGHT_BRACE,
+        '[': token.TokenType.LEFT_SQR_BRACKET,
+        ']': token.TokenType.RIGHT_SQR_BRACKET,
         '+': token.TokenType.PLUS,
         '-': token.TokenType.MINUS,
         '*': token.TokenType.STAR,
@@ -125,6 +127,7 @@ class Scanner:
             self._scan_number()
         else:
             reporting.error(self._line, "Unexpected character '{}'".format(c))
+            exit()
 
     def _scan_identifier(self):
         while self._is_identifier(self._traversal.get()):
@@ -137,6 +140,10 @@ class Scanner:
             if self._traversal.get() == '\n':
                 self._line += 1
                 self._column = 1
+
+            if self._traversal.get() == '\\':
+                # Skip an additional character if a control character is found
+                self._traversal.get_and_advance()
 
             self._traversal.get_and_advance()
 

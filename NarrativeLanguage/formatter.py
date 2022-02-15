@@ -108,6 +108,10 @@ def _format_variable_expr(expr):
     )
 
 
+def _format_scene_identifier_expr(expr):
+    return "[[{}]]".format(expr.identifier_token.lexeme)
+
+
 def _format_function_call_expr(expr):
     formatted_args = []
     for arg in expr.arguments:
@@ -135,6 +139,7 @@ def _format_binary_expr(expr):
 FORMATTER.submit(expression.Parenthesis, _format_parenthesis_expr) \
     .submit(expression.Literal, _format_literal_expr) \
     .submit(expression.Variable, _format_variable_expr) \
+    .submit(expression.SceneIdentifier, _format_scene_identifier_expr) \
     .submit(expression.FunctionCall, _format_function_call_expr) \
     .submit(expression.Unary, _format_unary_expr) \
     .submit(expression.Binary, _format_binary_expr)

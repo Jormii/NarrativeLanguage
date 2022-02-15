@@ -7,6 +7,8 @@ class TokenType(Enum):
     RIGHT_PARENTHESIS = auto()  # )
     LEFT_BRACE = auto()         # {
     RIGHT_BRACE = auto()        # }
+    LEFT_SQR_BRACKET = auto(),  # [
+    RIGHT_SQR_BRACKET = auto(), # ]
     PLUS = auto()               # +
     MINUS = auto()              # -
     STAR = auto()               # *

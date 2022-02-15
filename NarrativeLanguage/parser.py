@@ -326,8 +326,9 @@ class Parser:
     def _literal_and_parenthesis(self):
         # FORMAT
         # ('(' EXPRESSION ')') | LITERAL | ('#' IDENTIFIER) | IDENTIFIER |
-        #   (IDENTIFIER ARGUMENTS)
+        #   (IDENTIFIER ARGUMENTS) | ('[[' IDENTIFIER ']]')
 
+        # Grouping
         if self._tt.match_and_if_so_advance(TokenType.LEFT_PARENTHESIS):
             expr = expression.Parenthesis(self._expression())
             assert self._tt.match_and_if_so_advance(TokenType.RIGHT_PARENTHESIS), \
@@ -335,11 +336,12 @@ class Parser:
 
             return expr
 
+        # Literal
         literal_token = Token.empty()
         if self._tt.match_and_if_so_advance(Parser.LITERAL_TOKENS, literal_token):
             return expression.Literal(literal_token)
 
-        # Check if macro
+        # Macro
         if self._tt.match_and_if_so_advance(TokenType.POUND):
             identifier_token = Token.empty()
             assert self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, identifier_token), \
@@ -350,7 +352,7 @@ class Parser:
                 expression.Variable.VariableType.MACRO
             )
 
-        # Check if identifier or function call
+        # Identifier or function call
         identifier_token = Token.empty()
         if self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, identifier_token):
             if self._tt.match(TokenType.LEFT_PARENTHESIS):
@@ -362,6 +364,20 @@ class Parser:
                 expression.Variable.VariableType.VARIABLE
             )
 
+        # Scene identifier
+        if self._tt.match_and_if_so_advance(TokenType.LEFT_SQR_BRACKET) and \
+                self._tt.match_and_if_so_advance(TokenType.LEFT_SQR_BRACKET):
+            identifier_token = Token.empty()
+            assert self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, identifier_token), \
+                "Expected identifier afer '[['"
+
+            for _ in range(2):
+                assert self._tt.match_and_if_so_advance(TokenType.RIGHT_SQR_BRACKET), \
+                    "Expected ']]' afer scene identifier"
+
+            return expression.SceneIdentifier(identifier_token)
+
+        # Notify error
         raise Exception("Cannot parse expression")
 
     def _arguments(self):
