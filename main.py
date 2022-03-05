@@ -3,12 +3,14 @@ from NarrativeLanguage.formatter import FORMATTER
 from NarrativeLanguage.interpreter import INTERPRETER
 
 from VirtualMachine.type_checker import TypeChecker
+from VirtualMachine.program import Program
+from VirtualMachine.program_execution import ProgramExecution
 
-DEBUG = False
+DEBUG = True
 
 
 def main():
-    path = "./example.txt"
+    path = "./example3.txt"
     with open(path, "r") as f:
         source_code = f.read()
 
@@ -29,10 +31,24 @@ def main():
             for stmt in parse.statements:
                 print("> {}".format(FORMATTER.visit(stmt)))
                 print(INTERPRETER.visit(stmt))
+                
+            print(100 * "-")
 
         # Check types and resolve macros
         checker = TypeChecker(parse.statements)
         checker.check()
+
+        # Create program
+        program = Program(parse.statements, checker)
+        program.transpile()
+
+        if DEBUG:
+            program.pretty_print()
+            print(100 * "-")
+
+        # Execute
+        execution = ProgramExecution(program)
+        execution.execute()
 
 
 if __name__ == "__main__":

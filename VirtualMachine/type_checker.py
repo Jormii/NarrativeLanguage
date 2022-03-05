@@ -77,6 +77,10 @@ class TypeChecker:
         if value.variable_type == variables.VariableType.STRING:
             self.replace_macros_in_string(value)
 
+        # Create copies
+        identifier = identifier.copy()
+        value = value.copy()
+
         self.macros.define(identifier, value)
 
     def read_macro(self, identifier):
@@ -88,6 +92,10 @@ class TypeChecker:
     def define_variable(self, identifier, value):
         if value.variable_type == variables.VariableType.STRING:
             self.replace_macros_in_string(value)
+
+        # Create copies
+        identifier = identifier.copy()
+        value = value.copy()
 
         self.defined_variable_identifiers[identifier] = value.variable_type
         self.variables[value.variable_type].define(identifier, value)

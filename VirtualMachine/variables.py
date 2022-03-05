@@ -12,6 +12,9 @@ class Identifier:
     def __init__(self, name):
         self.name = name
 
+    def copy(self):
+        return Identifier(str(self.name))
+
     def __eq__(self, o):
         if not isinstance(o, Identifier):
             return False
@@ -30,6 +33,10 @@ class Value:
     def __init__(self, variable_type, literal):
         self.variable_type = variable_type
         self.literal = literal
+
+    def copy(self):
+        t = type(self.literal)
+        return Value(self.variable_type, t(self.literal))
 
     def __repr__(self):
         return "({}) {}".format(self.variable_type.name, self.literal)
