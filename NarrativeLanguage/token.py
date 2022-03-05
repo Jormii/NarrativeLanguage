@@ -52,6 +52,16 @@ class Token:
         self.line = line
         self.column = column
 
+    def copy(self):
+        if self.literal is None:
+            literal = self.literal
+        else:
+            t = type(self.literal)
+            literal = t(self.literal)
+
+        return Token(self.type, str(self.lexeme), literal,
+                     self.line, self.column)
+
     @staticmethod
     def empty():
         return Token(None, None, None, None, None)

@@ -75,12 +75,23 @@ class Program:
     # region Statements
 
     def _transpile_print_stmt(self, stmt):
-        pass
+        value = tc.value_from_token(stmt.string_token)
+        identifier = tc.anonymous_identifier(value)
+
+        instructions = self._variable_instructions(identifier)
+        instructions.append(inst.NoLiteralInstruction(inst.OpCode.PRINT))
+        self._add_instructions(instructions)
 
     def _transpile_expression_stmt(self, stmt):
+        if not isinstance(stmt.expr, expression.FunctionCall):
+            # Only function calls may have impact on the program
+            return
+
+        # TODO
         pass
 
     def _transpile_macro_declaration_stmt(self, stmt):
+        # Macros have no effect on the program
         pass
 
     def _transpile_assignment_stmt(self, stmt):
@@ -121,9 +132,31 @@ class Program:
         # Variable
 
         identifier = tc.identifier_from_token(expr.identifier_token)
+        is_macro = expr.variable_type == expression.Variable.VariableType.MACRO
+        if is_macro:
+            self._transpile_macro_as_literal(expr.identifier_token)
+            return
+
         instructions = self._variable_instructions(identifier)
         instructions.append(inst.NoLiteralInstruction(inst.OpCode.READ))
         self._add_instructions(instructions)
+
+    def _transpile_macro_as_literal(self, identifier_token):
+        mapping = {
+            variables.VariableType.INT: TokenType.INTEGER,
+            variables.VariableType.FLOAT: TokenType.FLOAT,
+            variables.VariableType.STRING: TokenType.STRING
+        }
+
+        identifier = tc.identifier_from_token(identifier_token)
+        variable = self.type_checker.read_macro(identifier)
+
+        token = identifier_token.copy()
+        token.type = mapping[variable.value.variable_type]
+        token.literal = variable.value.literal
+
+        literal_expr = expression.Literal(token)
+        self._transpile_literal_expr(literal_expr)
 
     def _transpile_scene_identifier_expr(self, expr):
         pass
@@ -132,7 +165,17 @@ class Program:
         pass
 
     def _transpile_unary_expr(self, expr):
-        pass
+        # -- STACK --
+        # Result of executing the expression
+
+        mapping = {
+            TokenType.MINUS: inst.OpCode.NEG,
+            TokenType.BANG: inst.OpCode.NOT
+        }
+
+        op_code = mapping[expr.operator_token.type]
+        self._transpiler.visit(expr.expr)
+        self._add_instructions(inst.NoLiteralInstruction(op_code))
 
     def _transpile_binary_expr(self, expr):
         # -- STACK --

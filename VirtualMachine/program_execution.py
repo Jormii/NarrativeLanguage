@@ -1,5 +1,6 @@
 from VirtualMachine.program import Program
 from VirtualMachine.instruction import OpCode
+from VirtualMachine.variables import VariableType
 
 
 class ProgramExecution:
@@ -14,9 +15,14 @@ class ProgramExecution:
 
     def execute(self):
         mapping = {
+            OpCode.PRINT: self._print_inst,
             OpCode.PUSH: self._push_inst,
             OpCode.READ: self._read_inst,
             OpCode.WRITE: self._write_inst,
+
+            OpCode.NEG: self._neg_inst,
+            OpCode.NOT: self._not_inst,
+
             OpCode.ADD: self._add_inst,
             OpCode.SUB: self._sub_inst,
             OpCode.MUL: self._mul_inst,
@@ -46,6 +52,17 @@ class ProgramExecution:
     def _pop(self):
         return self._stack.pop(-1)
 
+    def _print_inst(self, inst):
+        index = self._pop()
+        variable_type = self._pop()
+        assert variable_type == VariableType.STRING, \
+            "Only strings can be printed"
+
+        variables = self._type_checker.variables[variable_type]
+        variable = variables._in_order[index]
+
+        print(variable.value.literal)
+
     def _push_inst(self, inst):
         self._push(inst.literal)
 
@@ -72,6 +89,14 @@ class ProgramExecution:
 
         print("({}) {} = {} <- {}".format(
             variable_type.name, variable.identifier, old_value, literal))
+
+    def _neg_inst(self, inst):
+        value = self._pop()
+        self._push(-value)
+
+    def _not_inst(self, inst):
+        value = self._pop()
+        self._push(int(not bool(value)))
 
     def _add_inst(self, inst):
         left_value = self._pop()

@@ -3,8 +3,12 @@ from enum import Enum, auto
 
 class OpCode(Enum):
     PUSH = auto()
+    PRINT = auto()
     READ = auto()
     WRITE = auto()
+
+    NEG = auto()
+    NOT = auto()
 
     ADD = auto()
     SUB = auto()
