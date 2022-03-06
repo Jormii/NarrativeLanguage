@@ -17,12 +17,15 @@ class ProgramExecution:
 
     def execute(self):
         mapping = {
-            OpCode.PRINT: self._print_inst,
             OpCode.PUSH: self._push_inst,
+            OpCode.POP: self._pop_inst,
+            OpCode.PRINT: self._print_inst,
             OpCode.READ: self._read_inst,
             OpCode.WRITE: self._write_inst,
             OpCode.IJUMP: self._ijump_inst,
             OpCode.CJUMP: self._cjump_inst,
+
+            OpCode.CALL: self._call_inst,
 
             OpCode.NEG: self._neg_inst,
             OpCode.NOT: self._not_inst,
@@ -62,6 +65,12 @@ class ProgramExecution:
     def _pop(self):
         return self._stack.pop(-1)
 
+    def _push_inst(self, inst):
+        self._push(inst.literal)
+
+    def _pop_inst(self, inst):
+        self._pop()
+
     def _print_inst(self, inst):
         index = self._pop()
         variable_type = self._pop()
@@ -72,9 +81,6 @@ class ProgramExecution:
         variable = variables._in_order[index]
 
         print(variable.value.literal)
-
-    def _push_inst(self, inst):
-        self._push(inst.literal)
 
     def _read_inst(self, inst):
         index = self._pop()
@@ -107,6 +113,19 @@ class ProgramExecution:
         value = self._pop()
         if not bool(value):
             self._pc = inst.literal
+
+    def _call_inst(self, inst):
+        identifier = self._pop()
+        n_args = self._pop()
+        args = []
+        for _ in range(n_args):
+            args.append(self._pop())
+
+        function = self._type_checker.function_prototypes.get(identifier)
+        return_value = function.call(args)
+        self._push(return_value)
+
+        print("{}() -> {}".format(identifier, return_value))
 
     def _neg_inst(self, inst):
         value = self._pop()

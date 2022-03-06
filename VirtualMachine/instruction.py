@@ -3,11 +3,14 @@ from enum import Enum, auto
 
 class OpCode(Enum):
     PUSH = auto()
+    POP = auto()
     PRINT = auto()
     READ = auto()
     WRITE = auto()
     IJUMP = auto()
     CJUMP = auto()  # Jumps if condition evaluates to False
+
+    CALL = auto()
 
     NEG = auto()
     NOT = auto()

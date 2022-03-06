@@ -1,4 +1,5 @@
 import VirtualMachine.variables as variables
+from VirtualMachine.function import FunctionPrototypes
 
 from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
@@ -7,8 +8,10 @@ from NarrativeLanguage.visitor import Visitor
 
 class TypeChecker:
 
-    def __init__(self, statements):
+    def __init__(self, statements, function_prototypes: FunctionPrototypes):
         self.statements = statements
+        self.function_prototypes = function_prototypes
+
         self.macros = variables.Variables()
         self.defined_variable_identifiers = {}
         self.variables = {
@@ -194,7 +197,25 @@ class TypeChecker:
         raise NotImplementedError()
 
     def _check_function_call_expr(self, expr):
-        exit("Functions not supported yet")
+        identifier = identifier_from_token(expr.identifier_token)
+        arguments = []
+        for arg_expr in expr.arguments:
+            arguments.append(self._checker.visit(arg_expr))
+
+        assert self.function_prototypes.defined(identifier), \
+            "Unknown function {}".format(identifier)
+
+        prototype = self.function_prototypes.get(identifier)
+        assert len(prototype.params_types) == len(arguments), \
+            "Mismatch in number of parameters and arguments"
+
+        for param_type, arg in zip(prototype.params_types, arguments):
+            dummy_value = variables.Value(param_type, 0)
+            assert variables.Value.congruent(dummy_value, arg), \
+                "Argument is not congruent with function param"
+
+        # Functions always return an integer
+        return variables.Value(variables.VariableType.INT, 0)
 
     def _check_unary_expr(self, expr):
         return self._checker.visit(expr.expr)

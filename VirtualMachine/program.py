@@ -42,6 +42,8 @@ class Program:
             instruction = self.instructions[pc]
             pushes_variable = instruction.op_code == inst.OpCode.PUSH and \
                 isinstance(instruction.literal, variables.VariableType)
+            pushes_function = instruction.op_code == inst.OpCode.PUSH and \
+                isinstance(instruction.literal, variables.Identifier)
             if pushes_variable:
                 pc += 1
                 offset_instruction = self.instructions[pc]
@@ -53,6 +55,8 @@ class Program:
                 representation = "({}) {}".format(
                     variable_type.name, variable.identifier)
                 print("{}: {}".format(pc - 1, representation))
+            elif pushes_function:
+                print("{}: {}()".format(pc, instruction))
             else:
                 print("{}: {}".format(pc, instruction))
 
@@ -91,8 +95,10 @@ class Program:
             # Only function calls may have impact on the program
             return
 
-        # TODO
-        pass
+        self._transpile_function_call_expr(stmt.expr)
+
+        # Pop stack to discard return value
+        self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.POP))
 
     def _transpile_macro_declaration_stmt(self, stmt):
         # Macros have no effect on the program
@@ -202,7 +208,21 @@ class Program:
         pass
 
     def _transpile_function_call_expr(self, expr):
-        pass
+        # -- STACK --
+        # Function ptr
+        # N args
+        # Arg0
+        # Arg1
+        # ...
+        # ArgN-1
+
+        for arg_expr in reversed(expr.arguments):
+            self._transpiler.visit(arg_expr)
+        self._add_instructions([
+            inst.push_inst(len(expr.arguments)),
+            inst.push_inst(tc.identifier_from_token(expr.identifier_token)),
+            inst.NoLiteralInstruction(inst.OpCode.CALL)
+        ])
 
     def _transpile_unary_expr(self, expr):
         # -- STACK --

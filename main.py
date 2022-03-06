@@ -5,12 +5,13 @@ from NarrativeLanguage.interpreter import INTERPRETER
 from VirtualMachine.type_checker import TypeChecker
 from VirtualMachine.program import Program
 from VirtualMachine.program_execution import ProgramExecution
+from VirtualMachine.custom_functions import prototypes
 
-DEBUG = False
+DEBUG = True
 
 
 def main():
-    path = "./example3.txt"
+    path = "./example.txt"
     with open(path, "r") as f:
         source_code = f.read()
 
@@ -35,7 +36,7 @@ def main():
             print(100 * "-")
 
         # Check types and resolve macros
-        checker = TypeChecker(parse.statements)
+        checker = TypeChecker(parse.statements, prototypes)
         checker.check()
 
         # Create program
