@@ -6,7 +6,7 @@ from VirtualMachine.type_checker import TypeChecker
 from VirtualMachine.program import Program
 from VirtualMachine.program_execution import ProgramExecution
 
-DEBUG = True
+DEBUG = False
 
 
 def main():
@@ -31,7 +31,7 @@ def main():
             for stmt in parse.statements:
                 print("> {}".format(FORMATTER.visit(stmt)))
                 print(INTERPRETER.visit(stmt))
-                
+
             print(100 * "-")
 
         # Check types and resolve macros

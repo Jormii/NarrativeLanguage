@@ -6,6 +6,8 @@ class OpCode(Enum):
     PRINT = auto()
     READ = auto()
     WRITE = auto()
+    IJUMP = auto()
+    CJUMP = auto()  # Jumps if condition evaluates to False
 
     NEG = auto()
     NOT = auto()
@@ -22,6 +24,8 @@ class OpCode(Enum):
     GTE = auto()
     AND = auto()
     OR = auto()
+
+    EOX = auto()    # End of execution
 
 
 class Instruction:

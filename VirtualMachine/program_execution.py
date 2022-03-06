@@ -10,7 +10,9 @@ class ProgramExecution:
         self.max_stack_size = 0
         self.n_instructions = len(self.program.instructions)
 
+        self._pc = 0
         self._stack = []
+        self._executing = True
         self._type_checker = program.type_checker
 
     def execute(self):
@@ -19,6 +21,8 @@ class ProgramExecution:
             OpCode.PUSH: self._push_inst,
             OpCode.READ: self._read_inst,
             OpCode.WRITE: self._write_inst,
+            OpCode.IJUMP: self._ijump_inst,
+            OpCode.CJUMP: self._cjump_inst,
 
             OpCode.NEG: self._neg_inst,
             OpCode.NOT: self._not_inst,
@@ -34,15 +38,21 @@ class ProgramExecution:
             OpCode.GT: self._gt_inst,
             OpCode.GTE: self._gte_inst,
             OpCode.AND: self._and_inst,
-            OpCode.OR: self._or_inst
+            OpCode.OR: self._or_inst,
+
+            OpCode.EOX: self._eox_inst
         }
 
-        for inst in self.program.instructions:
+        while self._executing:
+            inst = self.program.instructions[self._pc]
             mapping[inst.op_code](inst)
+            self._pc += 1
 
         assert len(self._stack) == 0
 
-        print("Instruction count: {}\nMax stack size: {}".format(
+        # TODO: Force visiting all conditions to guarantee max stack size is
+        # the actual maximum
+        print("\nInstruction count: {}\nMax stack size: {}".format(
             self.n_instructions, self.max_stack_size))
 
     def _push(self, literal):
@@ -89,6 +99,14 @@ class ProgramExecution:
 
         print("({}) {} = {} <- {}".format(
             variable_type.name, variable.identifier, old_value, literal))
+
+    def _ijump_inst(self, inst):
+        self._pc = inst.literal
+
+    def _cjump_inst(self, inst):
+        value = self._pop()
+        if not bool(value):
+            self._pc = inst.literal
 
     def _neg_inst(self, inst):
         value = self._pop()
@@ -171,3 +189,6 @@ class ProgramExecution:
         right_value = self._pop()
 
         self._push(int(bool(left_value or right_value)))
+
+    def _eox_inst(self, inst):
+        self._executing = False
