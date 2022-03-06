@@ -1,6 +1,7 @@
 from VirtualMachine.program import Program
 from VirtualMachine.instruction import OpCode
 from VirtualMachine.variables import VariableType
+from VirtualMachine.type_checker import value_from_token, anonymous_identifier
 
 
 class ProgramExecution:
@@ -14,12 +15,46 @@ class ProgramExecution:
         self._stack = []
         self._executing = True
         self._type_checker = program.type_checker
+        self._options_to_display = [False] * len(program._option_statements)
 
     def execute(self):
+        self._execute_pc(0)
+        try:
+            while True:
+                for index, display in enumerate(self._options_to_display):
+                    if not display:
+                        continue
+
+                    option = self.program._option_statements[index]
+                    value = value_from_token(option.string_token)
+                    identifier = anonymous_identifier(value)
+                    variable = self._type_checker.read_variable(identifier)
+                    print("{}: {}".format(index, variable.value.literal))
+
+                correct_input = False
+                while not correct_input:
+                    index = int(input("> "))
+                    if index < 0 or index >= len(self._options_to_display):
+                        continue
+
+                    correct_input = self._options_to_display[index]
+
+                pc = self.program._option_statements_pc[index]
+                self._execute_pc(pc)
+        except KeyboardInterrupt:
+            pass
+
+        # TODO: Force visiting all instructions to guarantee max stack size is
+        # the actual maximum
+        print("\n\nInstruction count: {}\nMax stack size: {}".format(
+            self.n_instructions, self.max_stack_size))
+
+    def _execute_pc(self, pc):
         mapping = {
             OpCode.PUSH: self._push_inst,
             OpCode.POP: self._pop_inst,
             OpCode.PRINT: self._print_inst,
+            OpCode.DISPLAY: self._display_inst,
             OpCode.READ: self._read_inst,
             OpCode.WRITE: self._write_inst,
             OpCode.IJUMP: self._ijump_inst,
@@ -46,17 +81,14 @@ class ProgramExecution:
             OpCode.EOX: self._eox_inst
         }
 
+        self._pc = pc
+        self._executing = True
         while self._executing:
             inst = self.program.instructions[self._pc]
             mapping[inst.op_code](inst)
             self._pc += 1
 
         assert len(self._stack) == 0
-
-        # TODO: Force visiting all conditions to guarantee max stack size is
-        # the actual maximum
-        print("\nInstruction count: {}\nMax stack size: {}".format(
-            self.n_instructions, self.max_stack_size))
 
     def _push(self, literal):
         self._stack.append(literal)
@@ -81,6 +113,10 @@ class ProgramExecution:
         variable = variables._in_order[index]
 
         print(variable.value.literal)
+
+    def _display_inst(self, inst):
+        index = inst.literal
+        self._options_to_display[index] = True
 
     def _read_inst(self, inst):
         index = self._pop()

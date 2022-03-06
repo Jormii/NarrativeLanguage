@@ -14,6 +14,8 @@ class Program:
         self.type_checker = type_checker
         self.instructions = []
 
+        self._option_statements = []
+        self._option_statements_pc = []
         self._transpiler = Visitor()
         self._transpiler.submit(statement.Print, self._transpile_print_stmt) \
             .submit(statement.Expression, self._transpile_expression_stmt) \
@@ -35,6 +37,16 @@ class Program:
             self._transpiler.visit(stmt)
 
         self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.EOX))
+
+        # Option statements are added to the end of the program
+        i = 0
+        while i < len(self._option_statements):
+            stmt = self._option_statements[i]
+            self._option_statements_pc.append(len(self.instructions))
+            self._transpiler.visit(stmt.block_stmt)
+            self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.EOX))
+
+            i += 1
 
     def pretty_print(self):
         pc = 0
@@ -102,7 +114,7 @@ class Program:
 
     def _transpile_macro_declaration_stmt(self, stmt):
         # Macros have no effect on the program
-        pass
+        return
 
     def _transpile_assignment_stmt(self, stmt):
         # -- STACK --
@@ -160,7 +172,10 @@ class Program:
             # PC - 1 because PC will be incremented during execution
 
     def _transpile_option_stmt(self, stmt):
-        pass
+        literal = len(self._option_statements)
+        self._add_instructions(
+            inst.LiteralInstruction(inst.OpCode.DISPLAY, literal))
+        self._option_statements.append(stmt)
 
     # endregion
 
