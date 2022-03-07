@@ -1,3 +1,4 @@
+import os
 from NarrativeLanguage import scanner, parser
 from NarrativeLanguage.formatter import FORMATTER
 from NarrativeLanguage.interpreter import INTERPRETER
@@ -5,6 +6,7 @@ from NarrativeLanguage.interpreter import INTERPRETER
 from VirtualMachine.type_checker import TypeChecker
 from VirtualMachine.program import Program
 from VirtualMachine.program_execution import ProgramExecution
+from VirtualMachine.program_binary import ProgramBinary
 from VirtualMachine.custom_functions import prototypes
 
 DEBUG = True
@@ -50,6 +52,12 @@ def main():
         # Execute
         execution = ProgramExecution(program)
         execution.execute()
+
+        # Write to file
+        base, _ = os.path.splitext(path)
+        out_path = "{}.bin".format(base)
+        binary = ProgramBinary(program)
+        binary.write_to_file(out_path)
 
 
 if __name__ == "__main__":

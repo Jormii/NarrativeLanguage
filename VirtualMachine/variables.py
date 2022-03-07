@@ -76,3 +76,6 @@ class Variables:
     def read(self, identifier):
         index = self._index_mapping[identifier]
         return self._in_order[index]
+
+    def length(self):
+        return len(self._in_order)

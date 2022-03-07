@@ -232,6 +232,9 @@ class Program:
         # ...
         # ArgN-1
 
+        # TODO: Think about how to link these functions and C functions
+        raise NotImplementedError()
+
         for arg_expr in reversed(expr.arguments):
             self._transpiler.visit(arg_expr)
         self._add_instructions([
