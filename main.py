@@ -1,7 +1,6 @@
 import os
 from NarrativeLanguage import scanner, parser
 from NarrativeLanguage.formatter import FORMATTER
-from NarrativeLanguage.interpreter import INTERPRETER
 
 from VirtualMachine.type_checker import TypeChecker
 from VirtualMachine.program import Program
@@ -33,7 +32,6 @@ def main():
         if DEBUG:
             for stmt in parse.statements:
                 print("> {}".format(FORMATTER.visit(stmt)))
-                print(INTERPRETER.visit(stmt))
 
             print(100 * "-")
 

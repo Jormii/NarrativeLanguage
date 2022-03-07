@@ -23,6 +23,20 @@ def _format_macro_declaration_stmt(stmt):
     return "#{}".format(FORMATTER.visit(stmt.assignment_stmt))
 
 
+def _format_global_declaration_stmt(stmt):
+    return "{}GLOBAL {};".format(_tabs(), stmt.identifier_token.lexeme)
+
+
+def _format_global_definition_stmt(stmt):
+    assignment_str = FORMATTER.visit(stmt.assignment_stmt)
+    return "{}GLOBAL {}".format(_tabs(), assignment_str)
+
+
+def _format_store_declaration_stmt(stmt):
+    assignment_str = FORMATTER.visit(stmt.assignment_stmt)
+    return "{}STORE {}".format(_tabs(), assignment_str)
+
+
 def _format_assignment_stmt(stmt):
     return "{}${} = {};".format(
         _tabs(), stmt.identifier_token.lexeme, FORMATTER.visit(stmt.assignment_expr))
@@ -65,16 +79,26 @@ def _format_condition_stmt(stmt):
 
 def _format_option_stmt(stmt):
     return "{}{} = {}".format(
-        _tabs(), stmt.string_token.lexeme, FORMATTER.visit(stmt.block_stmt))
+        _tabs(), stmt.string_token.lexeme,
+        FORMATTER.visit(stmt.block_stmt))
+
+
+def _format_option_visibility_stmt(stmt):
+    return "{}{} {}".format(
+        _tabs(), stmt.action_token.type.name, stmt.string_token.lexeme)
 
 
 FORMATTER.submit(statement.Print, _format_print_stmt) \
     .submit(statement.Expression, _format_expression_stmt) \
     .submit(statement.MacroDeclaration, _format_macro_declaration_stmt) \
+    .submit(statement.GlobalDeclaration, _format_global_declaration_stmt) \
+    .submit(statement.GlobalDefinition, _format_global_definition_stmt) \
+    .submit(statement.Store, _format_store_declaration_stmt) \
     .submit(statement.Assignment, _format_assignment_stmt) \
     .submit(statement.Block, _format_block_stmt) \
     .submit(statement.Condition, _format_condition_stmt) \
-    .submit(statement.Option, _format_option_stmt)
+    .submit(statement.Option, _format_option_stmt) \
+    .submit(statement.OptionVisibility, _format_option_visibility_stmt)
 
 # endregion
 

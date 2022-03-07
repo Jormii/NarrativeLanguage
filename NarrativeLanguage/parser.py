@@ -93,6 +93,12 @@ class Parser:
             return self._string_leading_statement()
         elif self._tt.match(TokenType.LEFT_BRACE):
             return self._block()
+        elif self._tt.match(TokenType.GLOBAL):
+            return self._global_variable()
+        elif self._tt.match(TokenType.STORE):
+            return self._store_variable()
+        elif self._tt.match([TokenType.DISPLAY, TokenType.HIDE]):
+            return self._option_visibility()
         elif self._tt.match(TokenType.IF):
             return self._condition()
 
@@ -182,6 +188,52 @@ class Parser:
             "Expected '}'"
 
         return statement.Block(statements)
+
+    def _global_variable(self):
+        # FORMAT
+        # GLOBAL ((IDENTIFIER ';') | ASSIGNMENT)
+
+        assert self._tt.match_and_if_so_advance(TokenType.GLOBAL), \
+            "Expected 'GLOBAL'"
+
+        if self._tt.peek_match(TokenType.SEMICOLON):
+            identifier_token = Token.empty()
+            self._tt.match_and_if_so_advance(
+                TokenType.IDENTIFIER, identifier_token)
+
+            assert self._tt.match_and_if_so_advance(TokenType.SEMICOLON), \
+                "Expected ';'"
+
+            stmt = statement.GlobalDeclaration(identifier_token)
+        else:
+            stmt = statement.GlobalDefinition(self._assignment())
+
+        return stmt
+
+    def _store_variable(self):
+        # FORMAT
+        # STORE ASSIGNMENT
+
+        assert self._tt.match_and_if_so_advance(TokenType.STORE), \
+            "Expected 'STORE'"
+
+        assignment_stmt = self._assignment()
+        return statement.Store(assignment_stmt)
+
+    def _option_visibility(self):
+        # FORMAT
+        # (DISPLAY | HIDE) STRING;
+
+        action_token = Token.empty()
+        string_token = Token.empty()
+        assert self._tt.match_and_if_so_advance([TokenType.DISPLAY, TokenType.HIDE], action_token), \
+            "Expected 'DISPLAY' or 'HIDE'"
+        assert self._tt.match_and_if_so_advance(TokenType.STRING, string_token), \
+            "Expected string literal"
+        assert self._tt.match_and_if_so_advance(TokenType.SEMICOLON), \
+            "Expected ';' after statement"
+
+        return statement.OptionVisibility(action_token, string_token)
 
     def _condition(self):
         # FORMAT
