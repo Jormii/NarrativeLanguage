@@ -76,6 +76,10 @@ class Scanner:
     }
 
     KEYWORDS_MAPPING = {
+        "GLOBAL": token.TokenType.GLOBAL,
+        "STORE": token.TokenType.STORE,
+        "DISPLAY": token.TokenType.DISPLAY,
+        "HIDE": token.TokenType.HIDE,
         "IF": token.TokenType.IF,
         "ELIF": token.TokenType.ELIF,
         "ELSE": token.TokenType.ELSE,
