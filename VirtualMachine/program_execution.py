@@ -104,13 +104,9 @@ class ProgramExecution:
         self._pop()
 
     def _print_inst(self, inst):
-        index = self._pop()
-        variable_type = self._pop()
-        assert variable_type == VariableType.STRING, \
-            "Only strings can be printed"
-
-        variables = self._type_checker.variables[variable_type]
-        variable = variables._in_order[index]
+        index = inst.literal
+        strings = self._type_checker.variables[VariableType.STRING]
+        variable = strings._in_order[index]
 
         print(variable.value.literal)
 

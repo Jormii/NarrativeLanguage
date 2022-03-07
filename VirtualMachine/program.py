@@ -97,10 +97,11 @@ class Program:
     def _transpile_print_stmt(self, stmt):
         value = tc.value_from_token(stmt.string_token)
         identifier = tc.anonymous_identifier(value)
+        variable = self.type_checker.read_variable(identifier)
 
-        instructions = self._variable_instructions(identifier)
-        instructions.append(inst.NoLiteralInstruction(inst.OpCode.PRINT))
-        self._add_instructions(instructions)
+        literal = variable.index
+        self._add_instructions(
+            inst.LiteralInstruction(inst.OpCode.PRINT, literal))
 
     def _transpile_expression_stmt(self, stmt):
         if not isinstance(stmt.expr, expression.FunctionCall):
