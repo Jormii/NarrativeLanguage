@@ -7,8 +7,9 @@ from NarrativeLanguage.constexpr_interpreter import CONSTEXPR_INTERPRETER
 
 class VariableSolver:
 
-    def __init__(self, statements):
+    def __init__(self, statements, function_prototypes):
         self.statements = statements
+        self.function_prototypes = function_prototypes
         self.variables = variables.Variables()
 
         self._solver = Visitor()
@@ -145,7 +146,20 @@ class VariableSolver:
         raise NotImplementedError()
 
     def _solve_function_call_expr(self, expr):
-        raise NotImplementedError()
+        identifier = identifier_from_token(expr.identifier_token)
+        assert self.function_prototypes.is_defined(identifier), \
+            "Unknown function '{}'".format(identifier)
+
+        args = []
+        for arg_expr in expr.arguments:
+            args.append(self._solver.visit(arg_expr))
+
+        prototype = self.function_prototypes.get(identifier)
+        assert prototype.compatible_args(args), \
+            "Provided arguments aren't compatible with function {}. Provided: {}".format(
+                prototype, args)
+
+        return variables.Value(prototype.return_type, 0)
 
     def _solve_unary_expr(self, expr):
         return self._solver.visit(expr.expr)

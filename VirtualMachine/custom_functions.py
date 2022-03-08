@@ -1,16 +1,21 @@
-from VirtualMachine.variables import VariableType as T
-from VirtualMachine.function import Function, FunctionPrototypes
+import NarrativeLanguage.variables as variables
+from NarrativeLanguage.function import Function, FunctionPrototypes
 
 
-class MultiplyFunc(Function):
+class IntMultiply(Function):
 
     def __init__(self):
-        super().__init__("multiplicar", [T.INT, T.INT])
+        super().__init__(
+            "multiplicar",
+            variables.INT_TYPE,
+            [variables.INT_TYPE, variables.INT_TYPE]
+        )
 
-    def call(self, args):
-        print("{} x {} = {}".format(args[0], args[1], args[0]*args[1]))
-        return 1
 
-
+to_define = [IntMultiply()]
 prototypes = FunctionPrototypes()
-prototypes.define(MultiplyFunc())
+for f in to_define:
+    assert not prototypes.is_defined(f.identifier), \
+        "Function with name '{}' already defined".format(f.identifier)
+
+    prototypes.define(f)

@@ -50,7 +50,7 @@ class Value:
         self.literal = literal
 
     def __repr__(self):
-        return "({} {}B)".format(self.value_type, self.literal)
+        return "({} {})".format(self.value_type, self.literal)
 
 
 class VariableScope(Enum):
