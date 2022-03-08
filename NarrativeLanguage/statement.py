@@ -10,12 +10,6 @@ class Expression:
         self.expr = expr
 
 
-class MacroDeclaration:
-
-    def __init__(self, assignment_stmt):
-        self.assignment_stmt = assignment_stmt
-
-
 class GlobalDeclaration:
 
     def __init__(self, identifier_token):

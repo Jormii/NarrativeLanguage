@@ -19,10 +19,6 @@ def _format_expression_stmt(stmt):
     return "{}{};".format(_tabs(), FORMATTER.visit(stmt.expr))
 
 
-def _format_macro_declaration_stmt(stmt):
-    return "#{}".format(FORMATTER.visit(stmt.assignment_stmt))
-
-
 def _format_global_declaration_stmt(stmt):
     return "{}GLOBAL {};".format(_tabs(), stmt.identifier_token.lexeme)
 
@@ -90,7 +86,6 @@ def _format_option_visibility_stmt(stmt):
 
 FORMATTER.submit(statement.Print, _format_print_stmt) \
     .submit(statement.Expression, _format_expression_stmt) \
-    .submit(statement.MacroDeclaration, _format_macro_declaration_stmt) \
     .submit(statement.GlobalDeclaration, _format_global_declaration_stmt) \
     .submit(statement.GlobalDefinition, _format_global_definition_stmt) \
     .submit(statement.Store, _format_store_declaration_stmt) \
@@ -117,10 +112,7 @@ def _format_literal_expr(expr):
 
 
 def _format_variable_expr(expr):
-    return "{}{}".format(
-        "#" if expr.is_macro() else "$",
-        expr.identifier_token.lexeme
-    )
+    return "{}{}".format("$", expr.identifier_token.lexeme)
 
 
 def _format_scene_identifier_expr(expr):
