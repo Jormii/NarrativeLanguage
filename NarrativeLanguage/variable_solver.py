@@ -132,6 +132,9 @@ class VariableSolver:
         return self._solver.visit(expr.inner_expr)
 
     def _solve_literal_expr(self, expr):
+        assert expr.literal_token.type != TokenType.STRING, \
+            "String literals aren't allowed"
+
         return value_from_token(expr.literal_token)
 
     def _solve_variable_expr(self, expr):

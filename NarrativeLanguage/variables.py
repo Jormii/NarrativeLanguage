@@ -24,14 +24,18 @@ class Identifier:
 class ValueType:
 
     def __init__(self, numpy_type):
-        self.numpy_type = np.dtype(numpy_type)
-        self.byte_size = self.numpy_type.itemsize
+        self.numpy_type = numpy_type
+        self.numpy_dtype = np.dtype(numpy_type)
+        self.byte_size = self.numpy_dtype.itemsize
 
     def __eq__(self, o):
         if not isinstance(o, ValueType):
             return False
 
         return self.numpy_type == o.numpy_type
+
+    def __hash__(self):
+        return hash(self.numpy_type)
 
     def __repr__(self):
         return repr(self.numpy_type)

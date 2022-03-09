@@ -6,6 +6,7 @@ class OpCode(Enum):
     POP = auto()
     PRINT = auto()
     DISPLAY = auto()
+    HIDE = auto()
     READ = auto()
     WRITE = auto()
     IJUMP = auto()
