@@ -1,10 +1,9 @@
 import os
 from NarrativeLanguage import scanner, parser
 from NarrativeLanguage.formatter import FORMATTER
+from NarrativeLanguage.variable_solver import VariableSolver
 
-from VirtualMachine.type_checker import TypeChecker
 from VirtualMachine.program import Program
-from VirtualMachine.program_execution import ProgramExecution
 from VirtualMachine.program_binary import ProgramBinary
 from VirtualMachine.custom_functions import prototypes
 
@@ -36,20 +35,15 @@ def main():
             print(100 * "-")
 
         # Check types and resolve macros
-        checker = TypeChecker(parse.statements, prototypes)
-        checker.check()
+        solver = VariableSolver(parse.statements, prototypes)
+        solver.solve()
 
         # Create program
-        program = Program(parse.statements, checker)
+        program = Program(parse.statements, solver)
         program.transpile()
 
         if DEBUG:
             program.pretty_print()
-            print(100 * "-")
-
-        # Execute
-        execution = ProgramExecution(program)
-        execution.execute()
 
         # Write to file
         base, _ = os.path.splitext(path)

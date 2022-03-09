@@ -27,7 +27,7 @@ class Program:
 
         self._option_indices = {}
         self._option_statements = []
-        self._option_statements_pc = []
+        self._option_statements_data = []
 
         self._transpiler = Visitor()
         self._transpiler.submit(statement.Print, self._transpile_print_stmt) \
@@ -89,15 +89,15 @@ class Program:
         i = 0
         while i < len(self._option_statements):
             stmt = self._option_statements[i]
-            self._option_statements_pc.append(len(self.instructions))
-            self._transpiler.visit(stmt.block_stmt)
-            self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.EOX))
-
             value = vs.value_from_token(stmt.string_token)
             identifier = vs.anonymous_identifier(value)
 
-            key = "(C, {}) - {}".format(self.bytes_offset, identifier)
-            self.offsets[key] = self.bytes_offset
+            data = (self.offsets[identifier], len(self.instructions))
+            self._option_statements_data.append(data)
+
+            self._transpiler.visit(stmt.block_stmt)
+            self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.EOX))
+
             self.bytes_offset += types.OptionField(0, 0).size_in_bytes()
             i += 1
 

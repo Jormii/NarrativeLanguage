@@ -8,6 +8,9 @@ class VmField:
     def size_in_bytes(self):
         raise NotImplementedError()
 
+    def to_bytes(self):
+        raise NotImplementedError()
+
 
 class OffsetField(VmField):
 
@@ -16,6 +19,9 @@ class OffsetField(VmField):
 
     def size_in_bytes(self):
         return self.literal.itemsize
+
+    def to_bytes(self):
+        return self.literal.tobytes()
 
 
 class IntField(VmField):
@@ -27,6 +33,9 @@ class IntField(VmField):
     def size_in_bytes(self):
         return self.store_flag.itemsize + self.literal.itemsize
 
+    def to_bytes(self):
+        return self.store_flag.tobytes() + self.literal.tobytes()
+
 
 class FloatField(VmField):
 
@@ -37,15 +46,20 @@ class FloatField(VmField):
     def size_in_bytes(self):
         return self.store_flag.itemsize + self.literal.itemsize
 
+    def to_bytes(self):
+        return self.store_flag.tobytes() + self.literal.tobytes()
+
 
 class StringField(VmField):
 
     def __init__(self, string):
-        self.char_dtype = variables.STRING_TYPE.numpy_dtype
         self.string = string.encode("utf-16")
 
     def size_in_bytes(self):
-        return self.char_dtype.itemsize * len(self.string)
+        return len(self.string)
+
+    def to_bytes(self):
+        return self.string
 
 
 class OptionField(VmField):
@@ -57,6 +71,9 @@ class OptionField(VmField):
     def size_in_bytes(self):
         return self.string_offset.itemsize + self.pc.itemsize
 
+    def to_bytes(self):
+        return self.string_offset.tobytes() + self.pc.tobytes()
+
 
 class InstructionField(VmField):
 
@@ -66,6 +83,9 @@ class InstructionField(VmField):
 
     def size_in_bytes(self):
         return self.op_code.itemsize + self.literal.itemsize
+
+    def to_bytes(self):
+        return self.op_code.tobytes() + self.literal.tobytes()
 
 
 def _int_from_variable(variable):
