@@ -8,6 +8,10 @@ class Function:
         self.return_type = return_type
         self.params_types = params_types
 
+        # TODO: Remove this later
+        assert self.return_type != variables.FLOAT_TYPE, \
+            "Floats aren't allowed for now"
+
     def compatible_args(self, values):
         if len(self.params_types) != len(values):
             return False

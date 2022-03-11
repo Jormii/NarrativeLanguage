@@ -135,6 +135,10 @@ class VariableSolver:
         assert expr.literal_token.type != TokenType.STRING, \
             "String literals aren't allowed"
 
+        # TODO: Remove this later
+        assert expr.literal_token.type != TokenType.FLOAT, \
+            "Floats aren't allowed for now"
+
         return value_from_token(expr.literal_token)
 
     def _solve_variable_expr(self, expr):
