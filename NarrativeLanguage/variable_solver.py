@@ -132,9 +132,6 @@ class VariableSolver:
         return self._solver.visit(expr.inner_expr)
 
     def _solve_literal_expr(self, expr):
-        assert expr.literal_token.type != TokenType.STRING, \
-            "String literals aren't allowed"
-
         # TODO: Remove this later
         assert expr.literal_token.type != TokenType.FLOAT, \
             "Floats aren't allowed for now"
@@ -169,13 +166,20 @@ class VariableSolver:
         return variables.Value(prototype.return_type, 0)
 
     def _solve_unary_expr(self, expr):
-        return self._solver.visit(expr.expr)
+        value = self._solver.visit(expr.expr)
+        assert value.value_type != variables.STRING_TYPE, \
+            "Can't perform operations on strings"
+
+        return value
 
     def _solve_binary_expr(self, expr):
         left_value = self._solver.visit(expr.left_expr)
         right_value = self._solver.visit(expr.right_expr)
         assert left_value.value_type == right_value.value_type, \
             "Values {} and {} aren't congruent".format(left_value, right_value)
+
+        assert left_value.value_type != variables.STRING_TYPE, \
+            "Can't perform operations on strings"
 
         return variables.Value(left_value.value_type, 0)
 
