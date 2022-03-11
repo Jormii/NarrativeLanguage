@@ -257,22 +257,21 @@ class Program:
 
     def _transpile_function_call_expr(self, expr):
         # -- STACK --
-        # Function ptr
+        # Offset to store
         # N args
         # Arg0
         # Arg1
         # ...
         # ArgN-1
 
-        # TODO: Think about how to link these functions and C functions
-        raise NotImplementedError()
+        identifier = vs.identifier_from_token(expr.identifier_token)
+        hash = vs.string_32b_hash(identifier.name)
 
         for arg_expr in reversed(expr.arguments):
             self._transpiler.visit(arg_expr)
         self._add_instructions([
             inst.push_inst(len(expr.arguments)),
-            inst.push_inst(tc.identifier_from_token(expr.identifier_token)),
-            inst.NoLiteralInstruction(inst.OpCode.CALL)
+            inst.LiteralInstruction(inst.OpCode.CALL, hash)
         ])
 
     def _transpile_unary_expr(self, expr):

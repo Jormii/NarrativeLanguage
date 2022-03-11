@@ -1,5 +1,7 @@
 *.bin
 *.txt
 
+/VirtualMachine/custom_functions.py
+
 **/.vscode/
 **/__pycache__/

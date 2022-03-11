@@ -1,3 +1,5 @@
+import hashlib
+
 import NarrativeLanguage.variables as variables
 from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
@@ -11,6 +13,7 @@ class VariableSolver:
         self.statements = statements
         self.function_prototypes = function_prototypes
         self.variables = variables.Variables()
+        self.hashes_functions = {}
 
         self._solver = Visitor()
         self._solver.submit(statement.Print, self._solve_print_stmt) \
@@ -163,7 +166,17 @@ class VariableSolver:
             "Provided arguments aren't compatible with function {}. Provided: {}".format(
                 prototype, args)
 
-        return variables.Value(prototype.return_type, 0)
+        # Calculate hash
+        hash = string_32b_hash(identifier.name)
+        if hash in self.hashes_functions:
+            known_identifier = self.hashes_functions[hash]
+            assert known_identifier == identifier, \
+                "Collision: {} <-> {}".format(known_identifier, identifier)
+        else:
+            self.hashes_functions[hash] = identifier
+
+        # The return value is always and integer
+        return variables.Value(variables.INT_TYPE, 0)
 
     def _solve_unary_expr(self, expr):
         value = self._solver.visit(expr.expr)
@@ -210,3 +223,8 @@ def anonymous_identifier(value):
 
     name = "+{}".format(value.literal)
     return variables.Identifier(name)
+
+
+def string_32b_hash(string):
+    utf16 = string.encode("utf-16")
+    return int.from_bytes(hashlib.sha256(utf16).digest()[:4], "little")
