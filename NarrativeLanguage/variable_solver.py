@@ -24,8 +24,7 @@ class VariableSolver:
             .submit(statement.Assignment, self._solve_assignment_stmt) \
             .submit(statement.Block, self._solve_block_stmt) \
             .submit(statement.Condition, self._solve_condition_stmt) \
-            .submit(statement.Option, self._solve_option_stmt) \
-            .submit(statement.OptionVisibility, self._solve_option_visibility_stmt)
+            .submit(statement.Option, self._solve_option_stmt)
         self._solver.submit(expression.Parenthesis, self._solve_parenthesis_expr) \
             .submit(expression.Literal, self._solve_literal_expr) \
             .submit(expression.Variable, self._solve_variable_expr) \
@@ -120,12 +119,6 @@ class VariableSolver:
             self.define(variables.VariableScope.TEMPORAL, identifier, value)
 
         self._solver.visit(stmt.block_stmt)
-
-    def _solve_option_visibility_stmt(self, stmt):
-        value = value_from_token(stmt.string_token)
-        identifier = anonymous_identifier(value)
-        assert self.is_defined(identifier), \
-            "Unknown option '{}'".format(identifier)
 
     # endregion
 

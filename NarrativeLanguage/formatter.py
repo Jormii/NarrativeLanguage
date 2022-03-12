@@ -79,11 +79,6 @@ def _format_option_stmt(stmt):
         FORMATTER.visit(stmt.block_stmt))
 
 
-def _format_option_visibility_stmt(stmt):
-    return "{}{} {}".format(
-        _tabs(), stmt.action_token.type.name, stmt.string_token.lexeme)
-
-
 FORMATTER.submit(statement.Print, _format_print_stmt) \
     .submit(statement.Expression, _format_expression_stmt) \
     .submit(statement.GlobalDeclaration, _format_global_declaration_stmt) \
@@ -92,8 +87,7 @@ FORMATTER.submit(statement.Print, _format_print_stmt) \
     .submit(statement.Assignment, _format_assignment_stmt) \
     .submit(statement.Block, _format_block_stmt) \
     .submit(statement.Condition, _format_condition_stmt) \
-    .submit(statement.Option, _format_option_stmt) \
-    .submit(statement.OptionVisibility, _format_option_visibility_stmt)
+    .submit(statement.Option, _format_option_stmt)
 
 # endregion
 

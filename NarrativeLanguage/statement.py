@@ -56,10 +56,3 @@ class Option:
     def __init__(self, string_token, block_stmt):
         self.string_token = string_token
         self.block_stmt = block_stmt
-
-
-class OptionVisibility:
-
-    def __init__(self, action_token, string_token):
-        self.action_token = action_token
-        self.string_token = string_token

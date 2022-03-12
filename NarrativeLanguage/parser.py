@@ -95,8 +95,6 @@ class Parser:
             return self._global_variable()
         elif self._tt.match(TokenType.STORE):
             return self._store_variable()
-        elif self._tt.match([TokenType.DISPLAY, TokenType.HIDE]):
-            return self._option_visibility()
         elif self._tt.match(TokenType.IF):
             return self._condition()
 
@@ -202,21 +200,6 @@ class Parser:
 
         assignment_stmt = self._assignment()
         return statement.Store(assignment_stmt)
-
-    def _option_visibility(self):
-        # FORMAT
-        # (DISPLAY | HIDE) STRING;
-
-        action_token = Token.empty()
-        string_token = Token.empty()
-        assert self._tt.match_and_if_so_advance([TokenType.DISPLAY, TokenType.HIDE], action_token), \
-            "Expected 'DISPLAY' or 'HIDE'"
-        assert self._tt.match_and_if_so_advance(TokenType.STRING, string_token), \
-            "Expected string literal"
-        assert self._tt.match_and_if_so_advance(TokenType.SEMICOLON), \
-            "Expected ';' after statement"
-
-        return statement.OptionVisibility(action_token, string_token)
 
     def _condition(self):
         # FORMAT

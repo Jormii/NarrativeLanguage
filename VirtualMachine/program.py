@@ -100,8 +100,7 @@ class Program:
             .submit(statement.Assignment, self._transpile_assignment_stmt) \
             .submit(statement.Block, self._transpile_block_stmt) \
             .submit(statement.Condition, self._transpile_condition_stmt) \
-            .submit(statement.Option, self._transpile_option_stmt) \
-            .submit(statement.OptionVisibility, self._transpile_option_visibility_stmt)
+            .submit(statement.Option, self._transpile_option_stmt)
         self._transpiler.submit(expression.Parenthesis, self._transpile_parenthesis_expr) \
             .submit(expression.Literal, self._transpile_literal_expr) \
             .submit(expression.Variable, self._transpile_variable_expr) \
@@ -252,22 +251,6 @@ class Program:
         self.options.append(option)
         self._add_instructions(
             inst.LiteralInstruction(inst.OpCode.DISPLAY, offset))
-
-    def _transpile_option_visibility_stmt(self, stmt):
-        # TODO: Remove DISPLAY and HIDE keywords
-        raise NotImplementedError()
-        mapping = {
-            TokenType.DISPLAY: inst.OpCode.DISPLAY,
-            TokenType.HIDE: inst.OpCode.HIDE
-        }
-
-        action_token = stmt.action_token
-        value = vs.value_from_token(stmt.string_token)
-        identifier = vs.anonymous_identifier(value)
-        index = self._option_indices[identifier]
-
-        op_code = mapping[action_token.type]
-        self._add_instructions(inst.LiteralInstruction(op_code, index))
 
     # endregion
 

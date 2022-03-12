@@ -36,8 +36,6 @@ class TokenType(Enum):
     # Keywords
     GLOBAL = auto()             # GLOBAL var
     STORE = auto()              # STORE var
-    DISPLAY = auto()            # DISPLAY
-    HIDE = auto()               # HIDE
     IF = auto()                 # IF
     ELIF = auto()               # ELIF
     ELSE = auto()               # ELSE
