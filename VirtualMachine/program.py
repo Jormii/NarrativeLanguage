@@ -9,25 +9,87 @@ import VirtualMachine.types as types
 import VirtualMachine.instruction as inst
 
 
+class YieldInstruction(inst.Instruction):
+
+    def __init__(self, op_code, identifier):
+        super().__init__(op_code)
+        self.identifier = identifier
+
+    def unwrap(self):
+        raise NotImplementedError()
+
+
+class Offsets:
+
+    class OffsetInstruction(YieldInstruction):
+
+        def __init__(self, op_code, identifier, offsets):
+            super().__init__(op_code, identifier)
+            self.offsets = offsets
+
+        def unwrap(self):
+            offset = self.offsets.variables_offset[self.identifier]
+            return inst.LiteralInstruction(self.op_code, offset)
+
+    def __init__(self):
+        self.offset = 0
+        self.variables_offset = {}
+        self.used_variables = set()
+
+    def calculate_offsets(self, solver: vs.VariableSolver):
+        # Group variables by type
+        by_type = {}
+        for variable in solver.variables._in_order:
+            if variable.scope in [variables.VariableScope.GLOBAL_DEFINE,
+                                  variables.VariableScope.GLOBAL_DECLARE]:
+                # Ignore global variables
+                continue
+
+            value_type = variable.value.value_type
+            if value_type not in by_type:
+                by_type[value_type] = []
+            by_type[value_type].append(variable)
+
+        # Calculate offsets
+        custom_order = [variables.INT_TYPE, variables.FLOAT_TYPE,
+                        variables.STRING_TYPE]
+        for value_type in custom_order:
+            type_variables = by_type.get(value_type, [])
+            cb = types.VALUE_TYPE_CALLBACKS[value_type]
+
+            for variable in type_variables:
+                if not variable.identifier in self.used_variables:
+                    continue
+
+                field = cb(variable)
+
+                self.variables_offset[variable.identifier] = self.offset
+                self.offset += field.size_in_bytes()
+
+    def wrap_instruction(self, op_code, identifier):
+        self.used_variables.add(identifier)
+        return Offsets.OffsetInstruction(op_code, identifier, self)
+
+
+class Option:
+
+    def __init__(self, string_identifier, block_stmt, offset):
+        self.string_identifier = string_identifier
+        self.block_stmt = block_stmt
+        self.offset = offset
+        self.pc = None
+
+
 class Program:
 
     def __init__(self, statements, solver: vs.VariableSolver):
         self.statements = statements
         self.solver = solver
 
+        self.base_offset = types.OffsetField(0).size_in_bytes()
         self.instructions = []
-        self.offsets = {}
-        self.variables_offset = 2 * types.OffsetField(0).size_in_bytes() \
-            # Instructions offset + options offset
-        self.instructions_offset = 0
-        self.options_offset = 0
-
-        self.bytes_offset = self.variables_offset
-        self._calculate_variable_offsets()
-
-        self._option_indices = {}
-        self._option_statements = []
-        self._option_statements_data = []
+        self.offsets = Offsets()
+        self.options = []
 
         self._transpiler = Visitor()
         self._transpiler.submit(statement.Print, self._transpile_print_stmt) \
@@ -48,35 +110,6 @@ class Program:
             .submit(expression.Unary, self._transpile_unary_expr) \
             .submit(expression.Binary, self._transpile_binary_expr)
 
-    def _calculate_variable_offsets(self):
-        # Group variables by type
-        by_type = {}
-        for variable in self.solver.variables._in_order:
-            if variable.scope in [variables.VariableScope.GLOBAL_DEFINE,
-                                  variables.VariableScope.GLOBAL_DECLARE]:
-                # Ignore global variables
-                continue
-
-            value_type = variable.value.value_type
-            if value_type not in by_type:
-                by_type[value_type] = []
-            by_type[value_type].append(variable)
-
-        # Calculate offsets
-        custom_order = [variables.INT_TYPE,
-                        variables.FLOAT_TYPE, variables.STRING_TYPE]
-        for value_type in custom_order:
-            if value_type not in by_type:
-                continue
-
-            cb = types.VALUE_TYPE_CALLBACKS[value_type]
-            for variable in by_type[value_type]:
-                field = cb(variable)
-                size = field.size_in_bytes()
-
-                self.offsets[variable.identifier] = self.bytes_offset
-                self.bytes_offset += size
-
     def transpile(self):
         for stmt in self.statements:
             self._transpiler.visit(stmt)
@@ -84,37 +117,36 @@ class Program:
         self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.EOX))
 
         # Option statements are added to the end of the program
-        self.options_offset = self.bytes_offset
-
         i = 0
-        while i < len(self._option_statements):
-            stmt = self._option_statements[i]
-            value = vs.value_from_token(stmt.string_token)
-            identifier = vs.anonymous_identifier(value)
+        while i < len(self.options):
+            option = self.options[i]
+            option.pc = len(self.instructions)
 
-            data = (self.offsets[identifier], len(self.instructions))
-            self._option_statements_data.append(data)
-
-            self._transpiler.visit(stmt.block_stmt)
+            self._transpiler.visit(option.block_stmt)
             self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.EOX))
 
-            self.bytes_offset += types.OptionField(0, 0).size_in_bytes()
             i += 1
 
-        self.instructions_offset = self.bytes_offset
-        self.bytes_offset += len(self.instructions) * \
-            types.InstructionField(0, 0).size_in_bytes()
+        # Replace YieldInstruction instructions
+        self.offsets.offset = self.base_offset + \
+            len(self.options) * types.OptionField(0, 0).size_in_bytes()
+
+        self.offsets.calculate_offsets(self.solver)
+        for i, instruction in enumerate(self.instructions):
+            if not isinstance(instruction, YieldInstruction):
+                continue
+
+            self.instructions[i] = instruction.unwrap()
 
     def pretty_print(self):
-        print("-- OFFSETS --")
-        print("Variables: {}".format(self.variables_offset))
-        print("Options: {}".format(self.options_offset))
-        print("Instructions: {}".format(self.instructions_offset))
-        print("EOF: {}".format(self.bytes_offset))
-
         print("\n-- VARIABLES --")
-        for identifier, offset in self.offsets.items():
+        for identifier, offset in self.offsets.variables_offset.items():
             print("{}: {}".format(offset, identifier))
+
+        print("\n-- OPTIONS --")
+        for option in self.options:
+            print("{}: {} - {}".format(option.offset,
+                  option.pc, option.string_identifier))
 
         print("\n-- INSTRUCTIONS --")
         for pc, instruction in enumerate(self.instructions):
@@ -131,10 +163,9 @@ class Program:
     def _transpile_print_stmt(self, stmt):
         value = vs.value_from_token(stmt.string_token)
         identifier = vs.anonymous_identifier(value)
-        offset = self.offsets[identifier]
 
         self._add_instructions(
-            inst.LiteralInstruction(inst.OpCode.PRINT, offset))
+            self.offsets.wrap_instruction(inst.OpCode.PRINT, identifier))
 
     def _transpile_expression_stmt(self, stmt):
         if not isinstance(stmt.expr, expression.FunctionCall):
@@ -165,9 +196,8 @@ class Program:
         self._transpiler.visit(stmt.assignment_expr)
 
         identifier = vs.identifier_from_token(stmt.identifier_token)
-        offset = self.offsets[identifier]
         self._add_instructions(
-            inst.LiteralInstruction(inst.OpCode.WRITE, offset))
+            self.offsets.wrap_instruction(inst.OpCode.WRITE, identifier))
 
     def _transpile_block_stmt(self, stmt):
         for stmt in stmt.statements:
@@ -215,13 +245,17 @@ class Program:
         value = vs.value_from_token(stmt.string_token)
         identifier = vs.anonymous_identifier(value)
 
-        index = len(self._option_statements)
+        offset = self.base_offset + \
+            len(self.options) * types.OptionField(0, 0).size_in_bytes()
+        option = Option(identifier, stmt.block_stmt, offset)
+
+        self.options.append(option)
         self._add_instructions(
-            inst.LiteralInstruction(inst.OpCode.DISPLAY, index))
-        self._option_indices[identifier] = index
-        self._option_statements.append(stmt)
+            inst.LiteralInstruction(inst.OpCode.DISPLAY, offset))
 
     def _transpile_option_visibility_stmt(self, stmt):
+        # TODO: Remove DISPLAY and HIDE keywords
+        raise NotImplementedError()
         mapping = {
             TokenType.DISPLAY: inst.OpCode.DISPLAY,
             TokenType.HIDE: inst.OpCode.HIDE
@@ -248,9 +282,8 @@ class Program:
 
     def _transpile_variable_expr(self, expr):
         identifier = vs.identifier_from_token(expr.identifier_token)
-        offset = self.offsets[identifier]
         self._add_instructions(
-            inst.LiteralInstruction(inst.OpCode.READ, offset))
+            self.offsets.wrap_instruction(inst.OpCode.READ, identifier))
 
     def _transpile_scene_identifier_expr(self, expr):
         raise NotImplementedError()
