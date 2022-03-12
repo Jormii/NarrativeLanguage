@@ -1,6 +1,8 @@
 import NarrativeLanguage.variable_solver as vs
 import NarrativeLanguage.variables as variables
 
+from NarrativeLanguage.scanner import Scanner
+from NarrativeLanguage.parser import Parser
 from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
 from NarrativeLanguage.visitor import Visitor
@@ -17,6 +19,100 @@ class YieldInstruction(inst.Instruction):
 
     def unwrap(self):
         raise NotImplementedError()
+
+
+class CompoundString:
+
+    class Field:
+
+        def __init__(self, string, is_expression):
+            self.string = string
+            self.is_expression = is_expression
+
+            # Remove "\%" control characters
+            index = self.string.find("\\%")
+            while index != -1:
+                self.string = self.string[:index] + self.string[index+1:]
+                index = self.string.find("\\%")
+
+        def identifier(self):
+            value = variables.Value(variables.STRING_TYPE, self.string)
+            return vs.anonymous_identifier(value)
+
+        def expression(self):
+            scanner = Scanner(self.string + ";")
+            scanner.scan()
+
+            parser = Parser(scanner.tokens)
+            parser.parse()
+
+            stmts = parser.statements
+            assert len(stmts) == 1, \
+                "More than 1 statement found in string formatting"
+
+            expr_stmt = stmts[0]
+            assert isinstance(expr_stmt, statement.Expression), \
+                "Statement in string formatting isn't an expression"
+
+            return expr_stmt.expr
+
+    class PrintInstruction(YieldInstruction):
+
+        def __init__(self, identifier, compound_strings):
+            super().__init__(inst.OpCode.PRINT, identifier)
+            self.compound_strings = compound_strings
+
+        def unwrap(self):
+            pc = self.compound_strings[self.identifier].pc
+            return inst.LiteralInstruction(self.op_code, pc)
+
+    def __init__(self, string):
+        self.string = string
+        self.fields = self._split_fields()
+        self.pc = None
+
+    def _split_fields(self):
+        indices = CompoundString.find_percent_characters(self.string)
+
+        fields = []
+        start = 0
+        end = len(self.string) if len(indices) == 0 else indices[0]
+        for i, index in enumerate(indices):
+            if start != end:
+                substring = self.string[start:end]
+                fields.append(CompoundString.Field(substring, False))
+
+            substring = self.string[index+1:]
+            whitespace_index = substring.find(" ")
+            if whitespace_index == -1:
+                # It's the end of the string after the expression
+                whitespace_index = len(substring)
+
+            substring = substring[:whitespace_index]
+            fields.append(CompoundString.Field(substring, True))
+
+            is_last = (i + 1) == len(indices)
+            start = index + whitespace_index + 1
+            end = len(self.string) if is_last else indices[i + 1]
+
+        if start != end:
+            substring = self.string[start:end]
+            fields.append(CompoundString.Field(substring, False))
+
+        return fields
+
+    @staticmethod
+    def find_percent_characters(string):
+        indices = []
+        for i, c in enumerate(string):
+            if c != "%":
+                continue
+
+            prev = "" if i == 0 else string[i - 1]
+            if prev != "\\":
+                indices.append(i)
+
+        return indices
 
 
 class Offsets:
@@ -89,6 +185,7 @@ class Program:
         self.base_offset = types.OffsetField(0).size_in_bytes()
         self.instructions = []
         self.offsets = Offsets()
+        self.compound_strings = self._initialize_strings()
         self.options = []
 
         self._transpiler = Visitor()
@@ -109,6 +206,30 @@ class Program:
             .submit(expression.Unary, self._transpile_unary_expr) \
             .submit(expression.Binary, self._transpile_binary_expr)
 
+    def _initialize_strings(self):
+        defined_strings = []
+        for variable in self.solver.variables._in_order:
+            if variable.value.value_type == variables.STRING_TYPE:
+                defined_strings.append(variable)
+
+        strings = {}
+        for variable in defined_strings:
+            string = variable.value.literal
+            compound_string = CompoundString(string)
+            strings[variable.identifier] = compound_string
+
+            for field in compound_string.fields:
+                if field.is_expression:
+                    continue
+
+                value = variables.Value(variables.STRING_TYPE, field.string)
+                identifier = vs.anonymous_identifier(value)
+                if not self.solver.is_defined(identifier):
+                    self.solver.define(
+                        variables.VariableScope.TEMPORAL, identifier, value)
+
+        return strings
+
     def transpile(self):
         for stmt in self.statements:
             self._transpiler.visit(stmt)
@@ -126,6 +247,29 @@ class Program:
 
             i += 1
 
+        # Instructions to format strings are added at the end of the program
+        for compound_string in self.compound_strings.values():
+            compound_string.pc = len(self.instructions)
+
+            for field in compound_string.fields:
+                if not field.is_expression:
+                    self._add_instructions(self.offsets.wrap_instruction(
+                        inst.OpCode.PRINTSL, field.identifier()))
+                else:
+                    mapping = {
+                        variables.INT_TYPE: inst.OpCode.PRINTI,
+                        variables.STRING_TYPE: inst.OpCode.PRINTS
+                    }
+
+                    expr = field.expression()
+                    value = self.solver._solver.visit(expr)
+                    self._transpiler.visit(expr)
+
+                    op_code = mapping[value.value_type]
+                    self._add_instructions(inst.NoLiteralInstruction(op_code))
+
+            self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.ENDL))
+
         # Replace YieldInstruction instructions
         self.offsets.offset = self.base_offset + \
             len(self.options) * types.OptionField(0, 0).size_in_bytes()
@@ -140,12 +284,12 @@ class Program:
     def pretty_print(self):
         print("\n-- VARIABLES --")
         for identifier, offset in self.offsets.variables_offset.items():
-            print("{}: {}".format(offset, identifier))
+            print("{}: {}".format(offset, self.solver.read(identifier)))
 
         print("\n-- OPTIONS --")
         for option in self.options:
             print("{}: {} - {}".format(option.offset,
-                  option.pc, option.string_identifier))
+                  option.pc, self.solver.read(option.string_identifier)))
 
         print("\n-- INSTRUCTIONS --")
         for pc, instruction in enumerate(self.instructions):
@@ -163,8 +307,8 @@ class Program:
         value = vs.value_from_token(stmt.string_token)
         identifier = vs.anonymous_identifier(value)
 
-        self._add_instructions(
-            self.offsets.wrap_instruction(inst.OpCode.PRINT, identifier))
+        self._add_instructions(CompoundString.PrintInstruction(
+            identifier, self.compound_strings))
 
     def _transpile_expression_stmt(self, stmt):
         if not isinstance(stmt.expr, expression.FunctionCall):

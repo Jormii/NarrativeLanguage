@@ -5,6 +5,10 @@ class OpCode(Enum):
     PUSH = auto()
     POP = auto()
     PRINT = auto()
+    PRINTI = auto()     # Prints number in stack
+    PRINTS = auto()     # Prints string pointer in stack
+    PRINTSL = auto()    # Prints string variable. Offset is instruction's literal
+    ENDL = auto()
     DISPLAY = auto()
     READ = auto()
     WRITE = auto()
