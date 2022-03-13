@@ -2,7 +2,6 @@ import os
 
 
 import VirtualMachine.types as types
-import VirtualMachine.instruction as inst
 from VirtualMachine.program import Program
 
 
@@ -19,30 +18,31 @@ class ProgramBinary:
             os.makedirs(head)
 
         with open(path, "wb") as out_f:
-            out_f.write(types.OffsetField(
-                self.program.options_offset).to_bytes())
-            out_f.write(types.OffsetField(
-                self.program.instructions_offset).to_bytes())
+            # Header
+            instruction_offset = self.program.offsets.offset
+            options_counter = len(self.program.options)
+            header = types.HeaderField(instruction_offset, options_counter)
+            out_f.write(header.to_bytes())
 
-            for identifier in self.program.offsets.keys():
+            # Options
+            for option in self.program.options:
+                string_pc = option.string_pc
+                instructions_pc = option.pc
+                option_field = types.OptionField(string_pc, instructions_pc)
+                out_f.write(option_field.to_bytes())
+
+            # Variables
+            for identifier in self.program.offsets.variables_offset.keys():
                 variable = self.program.solver.read(identifier)
                 cb = types.VALUE_TYPE_CALLBACKS[variable.value.value_type]
-                field = cb(variable)
-                out_f.write(field.to_bytes())
+                variable_field = cb(variable)
+                out_f.write(variable_field.to_bytes())
 
-            for string_offset, pc in self.program._option_statements_data:
-                field = types.OptionField(string_offset, pc)
-                out_f.write(field.to_bytes())
-
+            # Instructions
             for instruction in self.program.instructions:
-                op_code = instruction.op_code
-                if isinstance(instruction, inst.NoLiteralInstruction):
-                    literal = 0
-                else:
-                    literal = instruction.literal
-
-                # Python enums start at 1
-                field = types.InstructionField(op_code.value - 1, literal)
-                out_f.write(field.to_bytes())
+                op_code = instruction.op_code.value - 1  # Enums start at 1
+                literal = instruction.get_literal()
+                inst_field = types.InstructionField(op_code, literal)
+                out_f.write(inst_field.to_bytes())
 
         print("{}: {}".format(path, os.path.getsize(path)))

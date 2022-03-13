@@ -166,7 +166,7 @@ class VariableSolver:
                 prototype, args)
 
         # Calculate hash
-        hash = string_32b_hash(identifier.name)
+        hash = string_24b_hash(identifier.name)
         if hash in self.hashes_functions:
             known_identifier = self.hashes_functions[hash]
             assert known_identifier == identifier, \
@@ -223,6 +223,6 @@ def anonymous_identifier(value):
     return variables.Identifier(name)
 
 
-def string_32b_hash(string):
+def string_24b_hash(string):
     utf16 = string.encode("utf-16")
-    return int.from_bytes(hashlib.sha256(utf16).digest()[:4], "little")
+    return int.from_bytes(hashlib.sha256(utf16).digest()[:3], "little")

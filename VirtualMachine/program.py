@@ -82,17 +82,12 @@ class CompoundString:
                 substring = self.string[start:end]
                 fields.append(CompoundString.Field(substring, False))
 
-            substring = self.string[index+1:]
-            whitespace_index = substring.find(" ")
-            if whitespace_index == -1:
-                # It's the end of the string after the expression
-                whitespace_index = len(substring)
-
-            substring = substring[:whitespace_index]
-            fields.append(CompoundString.Field(substring, True))
+            end_index = self._extract_expression(index)
+            expr_string = self.string[index+1:end_index]
+            fields.append(CompoundString.Field(expr_string, True))
 
             is_last = (i + 1) == len(indices)
-            start = index + whitespace_index + 1
+            start = end_index
             end = len(self.string) if is_last else indices[i + 1]
 
         if start != end:
@@ -100,6 +95,28 @@ class CompoundString:
             fields.append(CompoundString.Field(substring, False))
 
         return fields
+
+    def _extract_expression(self, percent_index):
+        def _is_valid_char(c):
+            return c.isalpha() or c.isdigit() or c in ["_", "(", ")"]
+
+        i = percent_index + 1
+        parenthesis_depth = 0
+        while i < len(self.string):
+            c = self.string[i]
+            if parenthesis_depth == 0 and not _is_valid_char(c):
+                # Allow any character in complex expressions
+                # Parser will take care of errors
+                break
+
+            if c == "(":
+                parenthesis_depth += 1
+            elif c == ")":
+                parenthesis_depth -= 1
+
+            i += 1
+
+        return i
 
     @staticmethod
     def find_percent_characters(string):
@@ -174,6 +191,7 @@ class Option:
         self.block_stmt = block_stmt
         self.offset = offset
         self.pc = None
+        self.string_pc = None
 
 
 class Program:
@@ -182,7 +200,7 @@ class Program:
         self.statements = statements
         self.solver = solver
 
-        self.base_offset = types.OffsetField(0).size_in_bytes()
+        self.base_offset = types.HeaderField(0, 0).size_in_bytes()
         self.instructions = []
         self.offsets = Offsets()
         self.compound_strings = self._initialize_strings()
@@ -270,6 +288,11 @@ class Program:
 
             self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.ENDL))
 
+        # Update option values
+        for option in self.options:
+            compound_string = self.compound_strings[option.string_identifier]
+            option.string_pc = compound_string.pc
+
         # Replace YieldInstruction instructions
         self.offsets.offset = self.base_offset + \
             len(self.options) * types.OptionField(0, 0).size_in_bytes()
@@ -284,16 +307,19 @@ class Program:
     def pretty_print(self):
         print("\n-- VARIABLES --")
         for identifier, offset in self.offsets.variables_offset.items():
-            print("{}: {}".format(offset, self.solver.read(identifier)))
+            print("{} ({}): {}".format(offset, hex(
+                offset), self.solver.read(identifier)))
 
         print("\n-- OPTIONS --")
         for option in self.options:
-            print("{}: {} - {}".format(option.offset,
+            print("{} ({}): {} - {}".format(option.offset, hex(option.offset),
                   option.pc, self.solver.read(option.string_identifier)))
 
         print("\n-- INSTRUCTIONS --")
         for pc, instruction in enumerate(self.instructions):
-            print("{}: {}".format(pc, instruction))
+            offset = self.offsets.offset + pc * \
+                types.InstructionField(0, 0).size_in_bytes()
+            print("{} ({}): {}".format(pc, hex(offset), instruction))
 
     def _add_instructions(self, instructions):
         if not isinstance(instructions, list):
@@ -425,7 +451,7 @@ class Program:
         # ArgN-1
 
         identifier = vs.identifier_from_token(expr.identifier_token)
-        hash = vs.string_32b_hash(identifier.name)
+        hash = vs.string_24b_hash(identifier.name)
 
         for arg_expr in reversed(expr.arguments):
             self._transpiler.visit(arg_expr)
