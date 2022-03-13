@@ -7,8 +7,8 @@ class TokenType(Enum):
     RIGHT_PARENTHESIS = auto()  # )
     LEFT_BRACE = auto()         # {
     RIGHT_BRACE = auto()        # }
-    LEFT_SQR_BRACKET = auto(),  # [
-    RIGHT_SQR_BRACKET = auto(), # ]
+    LEFT_SQR_BRACKET = auto()   # [
+    RIGHT_SQR_BRACKET = auto()  # ]
     PLUS = auto()               # +
     MINUS = auto()              # -
     STAR = auto()               # *
@@ -34,6 +34,8 @@ class TokenType(Enum):
     FLOAT = auto()              # f = 0.0
 
     # Keywords
+    GLOBAL = auto()             # GLOBAL var
+    STORE = auto()              # STORE var
     IF = auto()                 # IF
     ELIF = auto()               # ELIF
     ELSE = auto()               # ELSE

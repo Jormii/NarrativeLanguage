@@ -1,6 +1,3 @@
-from enum import auto, Enum
-
-
 class Parenthesis:
 
     def __init__(self, inner_expr):
@@ -15,16 +12,8 @@ class Literal:
 
 class Variable:
 
-    class VariableType(Enum):
-        MACRO = auto(),
-        VARIABLE = auto()
-
-    def __init__(self, identifier_token, variable_type):
+    def __init__(self, identifier_token):
         self.identifier_token = identifier_token
-        self.variable_type = variable_type
-
-    def is_macro(self):
-        return self.variable_type == Variable.VariableType.MACRO
 
 
 class SceneIdentifier:

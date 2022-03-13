@@ -5,6 +5,10 @@ class OpCode(Enum):
     PUSH = auto()
     POP = auto()
     PRINT = auto()
+    PRINTI = auto()     # Prints number in stack
+    PRINTS = auto()     # Prints string pointer in stack
+    PRINTSL = auto()    # Prints string variable. Offset is instruction's literal
+    ENDL = auto()
     DISPLAY = auto()
     READ = auto()
     WRITE = auto()
@@ -37,11 +41,17 @@ class Instruction:
     def __init__(self, op_code):
         self.op_code = op_code
 
+    def get_literal(self):
+        raise NotImplementedError()
+
 
 class NoLiteralInstruction(Instruction):
 
     def __init__(self, op_code):
         super().__init__(op_code)
+
+    def get_literal(self):
+        return 0
 
     def __repr__(self):
         return "{}".format(self.op_code.name)
@@ -52,6 +62,9 @@ class LiteralInstruction(Instruction):
     def __init__(self, op_code, literal):
         super().__init__(op_code)
         self.literal = literal
+
+    def get_literal(self):
+        return self.literal
 
     def __repr__(self):
         return "{} {}".format(self.op_code.name, self.literal)

@@ -85,33 +85,20 @@ class Parser:
             exit()
 
     def _statement(self):
-        if self._tt.match(TokenType.POUND):
-            return self._macro_declaration()
-        elif self._tt.match(TokenType.IDENTIFIER):
+        if self._tt.match(TokenType.IDENTIFIER):
             return self._identifier_leading_statement()
         elif self._tt.match(TokenType.STRING):
             return self._string_leading_statement()
         elif self._tt.match(TokenType.LEFT_BRACE):
             return self._block()
+        elif self._tt.match(TokenType.GLOBAL):
+            return self._global_variable()
+        elif self._tt.match(TokenType.STORE):
+            return self._store_variable()
         elif self._tt.match(TokenType.IF):
             return self._condition()
 
         return self._expression_statement()
-
-    def _macro_declaration(self):
-        # FORMAT
-        # '#' VARIABLE DECLARATION
-
-        assert self._tt.match_and_if_so_advance(TokenType.POUND), \
-            "Expected '#' before macro"
-
-        if self._tt.match(TokenType.IDENTIFIER) and not self._tt.peek_match(TokenType.EQUAL):
-            # It's an expression
-            self._tt._pos -= 1  # Undo advance caused by previous asser
-            return self._expression_statement()
-
-        assignment_stmt = self._assignment()
-        return statement.MacroDeclaration(assignment_stmt)
 
     def _identifier_leading_statement(self):
         if self._tt.peek_match(TokenType.EQUAL):
@@ -182,6 +169,37 @@ class Parser:
             "Expected '}'"
 
         return statement.Block(statements)
+
+    def _global_variable(self):
+        # FORMAT
+        # GLOBAL ((IDENTIFIER ';') | ASSIGNMENT)
+
+        assert self._tt.match_and_if_so_advance(TokenType.GLOBAL), \
+            "Expected 'GLOBAL'"
+
+        if self._tt.peek_match(TokenType.SEMICOLON):
+            identifier_token = Token.empty()
+            self._tt.match_and_if_so_advance(
+                TokenType.IDENTIFIER, identifier_token)
+
+            assert self._tt.match_and_if_so_advance(TokenType.SEMICOLON), \
+                "Expected ';'"
+
+            stmt = statement.GlobalDeclaration(identifier_token)
+        else:
+            stmt = statement.GlobalDefinition(self._assignment())
+
+        return stmt
+
+    def _store_variable(self):
+        # FORMAT
+        # STORE ASSIGNMENT
+
+        assert self._tt.match_and_if_so_advance(TokenType.STORE), \
+            "Expected 'STORE'"
+
+        assignment_stmt = self._assignment()
+        return statement.Store(assignment_stmt)
 
     def _condition(self):
         # FORMAT
@@ -341,17 +359,6 @@ class Parser:
         if self._tt.match_and_if_so_advance(Parser.LITERAL_TOKENS, literal_token):
             return expression.Literal(literal_token)
 
-        # Macro
-        if self._tt.match_and_if_so_advance(TokenType.POUND):
-            identifier_token = Token.empty()
-            assert self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, identifier_token), \
-                "Expected identifier after macro expression"
-
-            return expression.Variable(
-                identifier_token,
-                expression.Variable.VariableType.MACRO
-            )
-
         # Identifier or function call
         identifier_token = Token.empty()
         if self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, identifier_token):
@@ -359,10 +366,7 @@ class Parser:
                 arguments = self._arguments()
                 return expression.FunctionCall(identifier_token, arguments)
 
-            return expression.Variable(
-                identifier_token,
-                expression.Variable.VariableType.VARIABLE
-            )
+            return expression.Variable(identifier_token)
 
         # Scene identifier
         if self._tt.match_and_if_so_advance(TokenType.LEFT_SQR_BRACKET) and \

@@ -1,25 +1,217 @@
-import VirtualMachine.type_checker as tc
-import VirtualMachine.instruction as inst
-import VirtualMachine.variables as variables
+import NarrativeLanguage.variable_solver as vs
+import NarrativeLanguage.variables as variables
 
+from NarrativeLanguage.scanner import Scanner
+from NarrativeLanguage.parser import Parser
 from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
 from NarrativeLanguage.visitor import Visitor
 
+import VirtualMachine.types as types
+import VirtualMachine.instruction as inst
+
+
+class YieldInstruction(inst.Instruction):
+
+    def __init__(self, op_code, identifier):
+        super().__init__(op_code)
+        self.identifier = identifier
+
+    def unwrap(self):
+        raise NotImplementedError()
+
+
+class CompoundString:
+
+    class Field:
+
+        def __init__(self, string, is_expression):
+            self.string = string
+            self.is_expression = is_expression
+
+            # Remove "\%" control characters
+            index = self.string.find("\\%")
+            while index != -1:
+                self.string = self.string[:index] + self.string[index+1:]
+                index = self.string.find("\\%")
+
+        def identifier(self):
+            value = variables.Value(variables.STRING_TYPE, self.string)
+            return vs.anonymous_identifier(value)
+
+        def expression(self):
+            scanner = Scanner(self.string + ";")
+            scanner.scan()
+
+            parser = Parser(scanner.tokens)
+            parser.parse()
+
+            stmts = parser.statements
+            assert len(stmts) == 1, \
+                "More than 1 statement found in string formatting"
+
+            expr_stmt = stmts[0]
+            assert isinstance(expr_stmt, statement.Expression), \
+                "Statement in string formatting isn't an expression"
+
+            return expr_stmt.expr
+
+    class PrintInstruction(YieldInstruction):
+
+        def __init__(self, identifier, compound_strings):
+            super().__init__(inst.OpCode.PRINT, identifier)
+            self.compound_strings = compound_strings
+
+        def unwrap(self):
+            pc = self.compound_strings[self.identifier].pc
+            return inst.LiteralInstruction(self.op_code, pc)
+
+    def __init__(self, string):
+        self.string = string
+        self.fields = self._split_fields()
+        self.pc = None
+
+    def _split_fields(self):
+        indices = CompoundString.find_percent_characters(self.string)
+
+        fields = []
+        start = 0
+        end = len(self.string) if len(indices) == 0 else indices[0]
+        for i, index in enumerate(indices):
+            if start != end:
+                substring = self.string[start:end]
+                fields.append(CompoundString.Field(substring, False))
+
+            end_index = self._extract_expression(index)
+            expr_string = self.string[index+1:end_index]
+            fields.append(CompoundString.Field(expr_string, True))
+
+            is_last = (i + 1) == len(indices)
+            start = end_index
+            end = len(self.string) if is_last else indices[i + 1]
+
+        if start != end:
+            substring = self.string[start:end]
+            fields.append(CompoundString.Field(substring, False))
+
+        return fields
+
+    def _extract_expression(self, percent_index):
+        def _is_valid_char(c):
+            return c.isalpha() or c.isdigit() or c in ["_", "(", ")"]
+
+        i = percent_index + 1
+        parenthesis_depth = 0
+        while i < len(self.string):
+            c = self.string[i]
+            if parenthesis_depth == 0 and not _is_valid_char(c):
+                # Allow any character in complex expressions
+                # Parser will take care of errors
+                break
+
+            if c == "(":
+                parenthesis_depth += 1
+            elif c == ")":
+                parenthesis_depth -= 1
+
+            i += 1
+
+        return i
+
+    @staticmethod
+    def find_percent_characters(string):
+        indices = []
+        for i, c in enumerate(string):
+            if c != "%":
+                continue
+
+            prev = "" if i == 0 else string[i - 1]
+            if prev != "\\":
+                indices.append(i)
+
+        return indices
+
+
+class Offsets:
+
+    class OffsetInstruction(YieldInstruction):
+
+        def __init__(self, op_code, identifier, offsets):
+            super().__init__(op_code, identifier)
+            self.offsets = offsets
+
+        def unwrap(self):
+            offset = self.offsets.variables_offset[self.identifier]
+            return inst.LiteralInstruction(self.op_code, offset)
+
+    def __init__(self):
+        self.offset = 0
+        self.variables_offset = {}
+        self.used_variables = set()
+
+    def calculate_offsets(self, solver: vs.VariableSolver):
+        # Group variables by type
+        by_type = {}
+        for variable in solver.variables._in_order:
+            if variable.scope in [variables.VariableScope.GLOBAL_DEFINE,
+                                  variables.VariableScope.GLOBAL_DECLARE]:
+                # Ignore global variables
+                continue
+
+            value_type = variable.value.value_type
+            if value_type not in by_type:
+                by_type[value_type] = []
+            by_type[value_type].append(variable)
+
+        # Calculate offsets
+        custom_order = [variables.INT_TYPE, variables.FLOAT_TYPE,
+                        variables.STRING_TYPE]
+        for value_type in custom_order:
+            type_variables = by_type.get(value_type, [])
+            cb = types.VALUE_TYPE_CALLBACKS[value_type]
+
+            for variable in type_variables:
+                if not variable.identifier in self.used_variables:
+                    continue
+
+                field = cb(variable)
+
+                self.variables_offset[variable.identifier] = self.offset
+                self.offset += field.size_in_bytes()
+
+    def wrap_instruction(self, op_code, identifier):
+        self.used_variables.add(identifier)
+        return Offsets.OffsetInstruction(op_code, identifier, self)
+
+
+class Option:
+
+    def __init__(self, string_identifier, block_stmt, offset):
+        self.string_identifier = string_identifier
+        self.block_stmt = block_stmt
+        self.offset = offset
+        self.pc = None
+        self.string_pc = None
+
 
 class Program:
 
-    def __init__(self, statements, type_checker: tc.TypeChecker):
+    def __init__(self, statements, solver: vs.VariableSolver):
         self.statements = statements
-        self.type_checker = type_checker
-        self.instructions = []
+        self.solver = solver
 
-        self._option_statements = []
-        self._option_statements_pc = []
+        self.base_offset = types.HeaderField(0, 0).size_in_bytes()
+        self.instructions = []
+        self.offsets = Offsets()
+        self.compound_strings = self._initialize_strings()
+        self.options = []
+
         self._transpiler = Visitor()
         self._transpiler.submit(statement.Print, self._transpile_print_stmt) \
             .submit(statement.Expression, self._transpile_expression_stmt) \
-            .submit(statement.MacroDeclaration, self._transpile_macro_declaration_stmt) \
+            .submit(statement.GlobalDeclaration, self._transpile_global_declaration_stmt) \
+            .submit(statement.GlobalDefinition, self._transpile_global_definition_stmt) \
+            .submit(statement.Store, self._transpile_store_stmt) \
             .submit(statement.Assignment, self._transpile_assignment_stmt) \
             .submit(statement.Block, self._transpile_block_stmt) \
             .submit(statement.Condition, self._transpile_condition_stmt) \
@@ -32,6 +224,30 @@ class Program:
             .submit(expression.Unary, self._transpile_unary_expr) \
             .submit(expression.Binary, self._transpile_binary_expr)
 
+    def _initialize_strings(self):
+        defined_strings = []
+        for variable in self.solver.variables._in_order:
+            if variable.value.value_type == variables.STRING_TYPE:
+                defined_strings.append(variable)
+
+        strings = {}
+        for variable in defined_strings:
+            string = variable.value.literal
+            compound_string = CompoundString(string)
+            strings[variable.identifier] = compound_string
+
+            for field in compound_string.fields:
+                if field.is_expression:
+                    continue
+
+                value = variables.Value(variables.STRING_TYPE, field.string)
+                identifier = vs.anonymous_identifier(value)
+                if not self.solver.is_defined(identifier):
+                    self.solver.define(
+                        variables.VariableScope.TEMPORAL, identifier, value)
+
+        return strings
+
     def transpile(self):
         for stmt in self.statements:
             self._transpiler.visit(stmt)
@@ -40,39 +256,70 @@ class Program:
 
         # Option statements are added to the end of the program
         i = 0
-        while i < len(self._option_statements):
-            stmt = self._option_statements[i]
-            self._option_statements_pc.append(len(self.instructions))
-            self._transpiler.visit(stmt.block_stmt)
+        while i < len(self.options):
+            option = self.options[i]
+            option.pc = len(self.instructions)
+
+            self._transpiler.visit(option.block_stmt)
             self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.EOX))
 
             i += 1
 
+        # Instructions to format strings are added at the end of the program
+        for compound_string in self.compound_strings.values():
+            compound_string.pc = len(self.instructions)
+
+            for field in compound_string.fields:
+                if not field.is_expression:
+                    self._add_instructions(self.offsets.wrap_instruction(
+                        inst.OpCode.PRINTSL, field.identifier()))
+                else:
+                    mapping = {
+                        variables.INT_TYPE: inst.OpCode.PRINTI,
+                        variables.STRING_PTR_TYPE: inst.OpCode.PRINTS
+                    }
+
+                    expr = field.expression()
+                    value = self.solver._solver.visit(expr)
+                    self._transpiler.visit(expr)
+
+                    op_code = mapping[value.value_type]
+                    self._add_instructions(inst.NoLiteralInstruction(op_code))
+
+            self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.ENDL))
+
+        # Update option values
+        for option in self.options:
+            compound_string = self.compound_strings[option.string_identifier]
+            option.string_pc = compound_string.pc
+
+        # Replace YieldInstruction instructions
+        self.offsets.offset = self.base_offset + \
+            len(self.options) * types.OptionField(0, 0).size_in_bytes()
+
+        self.offsets.calculate_offsets(self.solver)
+        for i, instruction in enumerate(self.instructions):
+            if not isinstance(instruction, YieldInstruction):
+                continue
+
+            self.instructions[i] = instruction.unwrap()
+
     def pretty_print(self):
-        pc = 0
-        while pc < len(self.instructions):
-            instruction = self.instructions[pc]
-            pushes_variable = instruction.op_code == inst.OpCode.PUSH and \
-                isinstance(instruction.literal, variables.VariableType)
-            pushes_function = instruction.op_code == inst.OpCode.PUSH and \
-                isinstance(instruction.literal, variables.Identifier)
-            if pushes_variable:
-                pc += 1
-                offset_instruction = self.instructions[pc]
+        print("\n-- VARIABLES --")
+        for identifier, offset in self.offsets.variables_offset.items():
+            print("{} ({}): {}".format(offset, hex(
+                offset), self.solver.read(identifier)))
 
-                variable_type = instruction.literal
-                offset = offset_instruction.literal
-                variable = self.type_checker.variables[variable_type]._in_order[offset]
+        print("\n-- OPTIONS --")
+        for option in self.options:
+            print("{} ({}): {} - {}".format(option.offset, hex(option.offset),
+                  option.pc, self.solver.read(option.string_identifier)))
 
-                representation = "({}) {}".format(
-                    variable_type.name, variable.identifier)
-                print("{}: {}".format(pc - 1, representation))
-            elif pushes_function:
-                print("{}: {}()".format(pc, instruction))
-            else:
-                print("{}: {}".format(pc, instruction))
-
-            pc += 1
+        print("\n-- INSTRUCTIONS --")
+        for pc, instruction in enumerate(self.instructions):
+            offset = self.offsets.offset + pc * \
+                types.InstructionField(0, 0).size_in_bytes()
+            print("{} ({}): {}".format(pc, hex(offset), instruction))
 
     def _add_instructions(self, instructions):
         if not isinstance(instructions, list):
@@ -80,28 +327,14 @@ class Program:
 
         self.instructions.extend(instructions)
 
-    def _variable_instructions(self, identifier):
-        # Variables are pushed into the stack like this
-        # -- STACK --
-        # Offset
-        # Pointer
-
-        variable = self.type_checker.read_variable(identifier)
-        return ([
-            inst.push_inst(variable.value.variable_type),
-            inst.push_inst(variable.index)
-        ])
-
     # region Statements
 
     def _transpile_print_stmt(self, stmt):
-        value = tc.value_from_token(stmt.string_token)
-        identifier = tc.anonymous_identifier(value)
-        variable = self.type_checker.read_variable(identifier)
+        value = vs.value_from_token(stmt.string_token)
+        identifier = vs.anonymous_identifier(value)
 
-        literal = variable.index
-        self._add_instructions(
-            inst.LiteralInstruction(inst.OpCode.PRINT, literal))
+        self._add_instructions(CompoundString.PrintInstruction(
+            identifier, self.compound_strings))
 
     def _transpile_expression_stmt(self, stmt):
         if not isinstance(stmt.expr, expression.FunctionCall):
@@ -113,22 +346,27 @@ class Program:
         # Pop stack to discard return value
         self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.POP))
 
-    def _transpile_macro_declaration_stmt(self, stmt):
-        # Macros have no effect on the program
+    def _transpile_global_declaration_stmt(self, stmt):
+        # This statement doesn't affect the execution of the program
+        return
+
+    def _transpile_global_definition_stmt(self, stmt):
+        # This statement doesn't affect the execution of the program
+        return
+
+    def _transpile_store_stmt(self, stmt):
+        # This statement doesn't affect the execution of the program
         return
 
     def _transpile_assignment_stmt(self, stmt):
         # -- STACK --
         # Value to write
-        # Variable
 
         self._transpiler.visit(stmt.assignment_expr)
 
-        identifier = tc.identifier_from_token(stmt.identifier_token)
-
-        instructions = self._variable_instructions(identifier)
-        instructions.append(inst.NoLiteralInstruction(inst.OpCode.WRITE))
-        self._add_instructions(instructions)
+        identifier = vs.identifier_from_token(stmt.identifier_token)
+        self._add_instructions(
+            self.offsets.wrap_instruction(inst.OpCode.WRITE, identifier))
 
     def _transpile_block_stmt(self, stmt):
         for stmt in stmt.statements:
@@ -169,14 +407,20 @@ class Program:
             else:
                 pc = pcs[-1]  # End of all blocks
 
-            jump_instruction.literal = pc - 1
             # PC - 1 because PC will be incremented during execution
+            jump_instruction.literal = pc - 1
 
     def _transpile_option_stmt(self, stmt):
-        literal = len(self._option_statements)
+        value = vs.value_from_token(stmt.string_token)
+        identifier = vs.anonymous_identifier(value)
+
+        offset = self.base_offset + \
+            len(self.options) * types.OptionField(0, 0).size_in_bytes()
+        option = Option(identifier, stmt.block_stmt, offset)
+
+        self.options.append(option)
         self._add_instructions(
-            inst.LiteralInstruction(inst.OpCode.DISPLAY, literal))
-        self._option_statements.append(stmt)
+            inst.LiteralInstruction(inst.OpCode.DISPLAY, offset))
 
     # endregion
 
@@ -186,61 +430,34 @@ class Program:
         self._transpiler.visit(expr.inner_expr)
 
     def _transpile_literal_expr(self, expr):
-        value = tc.value_from_token(expr.literal_token)
+        value = vs.value_from_token(expr.literal_token)
         self._add_instructions(inst.push_inst(value.literal))
 
     def _transpile_variable_expr(self, expr):
-        # -- STACK --
-        # Variable
-
-        identifier = tc.identifier_from_token(expr.identifier_token)
-        is_macro = expr.variable_type == expression.Variable.VariableType.MACRO
-        if is_macro:
-            self._transpile_macro_as_literal(expr.identifier_token)
-            return
-
-        instructions = self._variable_instructions(identifier)
-        instructions.append(inst.NoLiteralInstruction(inst.OpCode.READ))
-        self._add_instructions(instructions)
-
-    def _transpile_macro_as_literal(self, identifier_token):
-        mapping = {
-            variables.VariableType.INT: TokenType.INTEGER,
-            variables.VariableType.FLOAT: TokenType.FLOAT,
-            variables.VariableType.STRING: TokenType.STRING
-        }
-
-        identifier = tc.identifier_from_token(identifier_token)
-        variable = self.type_checker.read_macro(identifier)
-
-        token = identifier_token.copy()
-        token.type = mapping[variable.value.variable_type]
-        token.literal = variable.value.literal
-
-        literal_expr = expression.Literal(token)
-        self._transpile_literal_expr(literal_expr)
+        identifier = vs.identifier_from_token(expr.identifier_token)
+        self._add_instructions(
+            self.offsets.wrap_instruction(inst.OpCode.READ, identifier))
 
     def _transpile_scene_identifier_expr(self, expr):
-        pass
+        raise NotImplementedError()
 
     def _transpile_function_call_expr(self, expr):
         # -- STACK --
-        # Function ptr
+        # Offset to store
         # N args
         # Arg0
         # Arg1
         # ...
         # ArgN-1
 
-        # TODO: Think about how to link these functions and C functions
-        raise NotImplementedError()
+        identifier = vs.identifier_from_token(expr.identifier_token)
+        hash = vs.string_24b_hash(identifier.name)
 
         for arg_expr in reversed(expr.arguments):
             self._transpiler.visit(arg_expr)
         self._add_instructions([
             inst.push_inst(len(expr.arguments)),
-            inst.push_inst(tc.identifier_from_token(expr.identifier_token)),
-            inst.NoLiteralInstruction(inst.OpCode.CALL)
+            inst.LiteralInstruction(inst.OpCode.CALL, hash)
         ])
 
     def _transpile_unary_expr(self, expr):
