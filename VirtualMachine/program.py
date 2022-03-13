@@ -258,7 +258,7 @@ class Program:
                 else:
                     mapping = {
                         variables.INT_TYPE: inst.OpCode.PRINTI,
-                        variables.STRING_TYPE: inst.OpCode.PRINTS
+                        variables.STRING_PTR_TYPE: inst.OpCode.PRINTS
                     }
 
                     expr = field.expression()

@@ -89,6 +89,9 @@ class VariableSolver:
         identifier = identifier_from_token(stmt.identifier_token)
         value = self._solver.visit(stmt.assignment_expr)
 
+        assert value.value_type not in [variables.STRING_TYPE, variables.STRING_PTR_TYPE], \
+            "Can't store strings"
+
         if self.is_defined(identifier):
             variable = self.read(identifier)
             assert value.value_type == variable.value.value_type, \
@@ -171,17 +174,23 @@ class VariableSolver:
         else:
             self.hashes_functions[hash] = identifier
 
-        # The return value is always and integer
-        return variables.Value(variables.INT_TYPE, 0)
+        return variables.Value(prototype.return_type, 0)
 
     def _solve_unary_expr(self, expr):
-        return self._solver.visit(expr.expr)
+        value = self._solver.visit(expr.expr)
+        assert value.value_type not in [variables.STRING_TYPE, variables.STRING_PTR_TYPE], \
+            "Can't perform operations on strings"
+
+        return value
 
     def _solve_binary_expr(self, expr):
         left_value = self._solver.visit(expr.left_expr)
         right_value = self._solver.visit(expr.right_expr)
         assert left_value.value_type == right_value.value_type, \
             "Values {} and {} aren't congruent".format(left_value, right_value)
+
+        assert left_value.value_type not in [variables.STRING_TYPE, variables.STRING_PTR_TYPE], \
+            "Can't perform operations on strings"
 
         return variables.Value(left_value.value_type, 0)
 

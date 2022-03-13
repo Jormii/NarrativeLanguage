@@ -1,7 +1,5 @@
 from enum import Enum, auto
 
-import numpy as np
-
 
 class Identifier:
 
@@ -23,28 +21,27 @@ class Identifier:
 
 class ValueType:
 
-    def __init__(self, numpy_type):
-        self.numpy_type = numpy_type
-        self.numpy_dtype = np.dtype(numpy_type)
-        self.byte_size = self.numpy_dtype.itemsize
+    def __init__(self, name):
+        self.name = name
 
     def __eq__(self, o):
         if not isinstance(o, ValueType):
             return False
 
-        return self.numpy_type == o.numpy_type
+        return self.name == o.name
 
     def __hash__(self):
-        return hash(self.numpy_type)
+        return hash(self.name)
 
     def __repr__(self):
-        return repr(self.numpy_type)
+        return repr(self.name)
 
 
-INT_TYPE = ValueType(np.int32)
-FLOAT_TYPE = ValueType(np.float32)
-STRING_TYPE = ValueType(np.uint16)
-SCENE_IDENTIFIER_TYPE = ValueType(np.uint32)
+INT_TYPE = ValueType("INT")
+FLOAT_TYPE = ValueType("FLOAT")
+STRING_TYPE = ValueType("STRING")
+STRING_PTR_TYPE = ValueType("STRING*")
+SCENE_IDENTIFIER_TYPE = ValueType("SCENE")
 
 
 class Value:
