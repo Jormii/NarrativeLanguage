@@ -1,6 +1,5 @@
 import os
 
-
 import VirtualMachine.types as types
 from VirtualMachine.program import Program
 
@@ -20,8 +19,10 @@ class ProgramBinary:
         with open(path, "wb") as out_f:
             # Header
             instruction_offset = self.program.offsets.offset
+            stack_size = self.program.max_stack_size
             options_counter = len(self.program.options)
-            header = types.HeaderField(instruction_offset, options_counter)
+            header = types.HeaderField(
+                instruction_offset, stack_size, options_counter)
             out_f.write(header.to_bytes())
 
             # Options

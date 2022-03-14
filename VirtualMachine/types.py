@@ -24,25 +24,31 @@ class VmField:
 
 class HeaderField(VmField):
 
-    # Bits [31-8]: Instruction offset
+    # Bits [31-16]: Instruction offset
+    # Bits [15-8]: Stack size
     # Bits [7-0]: Options counter
 
-    def __init__(self, instruction_offset, options_counter):
+    def __init__(self, instruction_offset, stack_size, options_counter):
         self.instruction_offset = instruction_offset
+        self.stack_size = stack_size
         self.options_counter = options_counter
 
         super().__init__()
 
     def _can_be_represented(self):
-        return can_be_represented_unsigned(self.instruction_offset, 24) and \
+        return can_be_represented_unsigned(self.instruction_offset, 16) and \
+            can_be_represented_unsigned(self.stack_size, 8) and \
             can_be_represented_unsigned(self.options_counter, 8)
 
     def numpy_class(self):
         return np.uint32
 
     def to_bytes(self):
-        inst_offset = self.instruction_offset << 8
-        return self.numpy_class()(inst_offset + self.options_counter).tobytes()
+        inst_offset = self.instruction_offset << 16
+        stack_size = self.stack_size << 8
+
+        c = self.numpy_class()
+        return c(inst_offset + stack_size + self.options_counter).tobytes()
 
     def __repr__(self):
         return "HEADER {}, {}".format(self.instruction_offset, self.options_counter)
