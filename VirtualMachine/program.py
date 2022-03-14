@@ -200,8 +200,9 @@ class Program:
         self.statements = statements
         self.solver = solver
 
-        self.base_offset = types.HeaderField(0, 0).size_in_bytes()
+        self.base_offset = types.HeaderField(0, 0, 0).size_in_bytes()
         self.instructions = []
+        self.max_stack_size = 0
         self.offsets = Offsets()
         self.compound_strings = self._initialize_strings()
         self.options = []
@@ -293,12 +294,32 @@ class Program:
             compound_string = self.compound_strings[option.string_identifier]
             option.string_pc = compound_string.pc
 
-        # Replace YieldInstruction instructions
+        # Calculate offsets and maximum stack size and replace YieldInstruction
+        # instructions
         self.offsets.offset = self.base_offset + \
             len(self.options) * types.OptionField(0, 0).size_in_bytes()
-
         self.offsets.calculate_offsets(self.solver)
+
+        stack_size = 0
         for i, instruction in enumerate(self.instructions):
+            # Stack size
+            if instruction.op_code == inst.OpCode.CALL:
+                modification = 1    # Defaults to return value
+
+                # Previous instructions pushes the number of args
+                n_args_inst = self.instructions[i - 1]
+                modification -= (1 + n_args_inst.literal)
+            else:
+                modification = inst.STACK_MODIFICATION[instruction.op_code]
+
+            stack_size += modification
+            self.max_stack_size = max(self.max_stack_size, stack_size)
+
+            if instruction.op_code in [inst.OpCode.ENDL, inst.OpCode.EOX]:
+                assert stack_size == 0, \
+                    "Stack still holds values when reaching ENDL/EOX"
+
+            # Replace YieldInstruction
             if not isinstance(instruction, YieldInstruction):
                 continue
 
@@ -316,6 +337,7 @@ class Program:
                   option.pc, self.solver.read(option.string_identifier)))
 
         print("\n-- INSTRUCTIONS --")
+        print("Stack size: {}".format(self.max_stack_size))
         for pc, instruction in enumerate(self.instructions):
             offset = self.offsets.offset + pc * \
                 types.InstructionField(0, 0).size_in_bytes()

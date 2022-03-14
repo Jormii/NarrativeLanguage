@@ -36,6 +36,42 @@ class OpCode(Enum):
     EOX = auto()    # End of execution
 
 
+STACK_MODIFICATION = {
+    OpCode.PUSH: 1,
+    OpCode.POP: -1,
+    OpCode.PRINT: 0,
+    OpCode.PRINTI: -1,
+    OpCode.PRINTS: -1,
+    OpCode.PRINTSL: 0,
+    OpCode.ENDL: 0,
+    OpCode.DISPLAY: 0,
+    OpCode.READ: 1,
+    OpCode.WRITE: -1,
+    OpCode.IJUMP: 0,
+    OpCode.CJUMP: -1,
+
+    # OpCode.CALL: None,    Call depends on number of arguments
+
+    OpCode.NEG: 0,
+    OpCode.NOT: 0,
+
+    OpCode.ADD: -1,
+    OpCode.SUB: -1,
+    OpCode.MUL: -1,
+    OpCode.DIV: -1,
+    OpCode.EQ: -1,
+    OpCode.NEQ: -1,
+    OpCode.LT: -1,
+    OpCode.LTE: -1,
+    OpCode.GT: -1,
+    OpCode.GTE: -1,
+    OpCode.AND: -1,
+    OpCode.OR: -1,
+
+    OpCode.EOX: 0
+}
+
+
 class Instruction:
 
     def __init__(self, op_code):
