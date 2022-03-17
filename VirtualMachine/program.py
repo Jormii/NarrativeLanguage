@@ -63,7 +63,9 @@ class CompoundString:
             self.compound_strings = compound_strings
 
         def unwrap(self):
-            pc = self.compound_strings[self.identifier].pc
+            # Substract 1 because the program will increase the PC by 1
+            # after executing the instruction
+            pc = self.compound_strings[self.identifier].pc - 1
             return inst.LiteralInstruction(self.op_code, pc)
 
     def __init__(self, string):
