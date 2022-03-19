@@ -13,7 +13,6 @@ class TokenType(Enum):
     MINUS = auto()              # -
     STAR = auto()               # *
     SLASH = auto()              # /
-    POUND = auto()              # '#'
     COMMA = auto()              # ,
     SEMICOLON = auto()          # ;
 
