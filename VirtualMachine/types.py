@@ -50,17 +50,17 @@ class HeaderField(VmField):
         return np.uint64
 
     def to_bytes(self):
-        # First uint
-        options_count = self.options_count << 16
-        integers_count = self.integers_count
-        first_bytes = np.uint32(options_count + integers_count).tobytes()
+        # First half
+        options_count = self.options_count << 48
+        integers_count = self.integers_count << 32
 
-        # Second uint
+        # Second half
         instructions_offset = self.instructions_offset << 8
         stack_size = self.stack_size
-        second_bytes = np.uint32(instructions_offset + stack_size).tobytes()
 
-        return first_bytes + second_bytes
+        c = self.numpy_class()
+        n = options_count + integers_count + instructions_offset + stack_size
+        return c(n).tobytes()
 
     def __repr__(self):
         return "HEADER {}, {}, {}, {}".format(
