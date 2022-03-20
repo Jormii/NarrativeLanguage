@@ -63,7 +63,6 @@ class Scanner:
         '-': token.TokenType.MINUS,
         '*': token.TokenType.STAR,
         '/': token.TokenType.SLASH,
-        '#': token.TokenType.POUND,
         ',': token.TokenType.COMMA,
         ';': token.TokenType.SEMICOLON
     }

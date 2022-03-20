@@ -1,0 +1,26 @@
+#include "fields.h"
+
+void header_unpack(header_t header_bytes, Header *out_header)
+{
+    out_header->instructions_offset = (header_bytes & HEADER_INSTRUCTIONS_OFFSET_MASK) >> 16;
+    out_header->stack_size = (header_bytes & HEADER_STACK_SIZE_MASK) >> 8;
+    out_header->options_counter = header_bytes & HEADER_OPTIONS_COUNTER_MASK;
+}
+
+void option_unpack(option_t option_bytes, Option *out_option)
+{
+    out_option->string_pc = (option_bytes & OPTION_STRING_FORMAT_PC_MASK) >> 16;
+    out_option->instructions_pc = option_bytes & OPTION_INSTRUCTIONS_PC_MASK;
+}
+
+void int_unpack(int_t int_bytes, Int *out_int)
+{
+    out_int->store_flag = (int_bytes & INT_STORE_FLAG_MASK) >> 24;
+    out_int->literal = int_bytes & INT_LITERAL_MASK;
+}
+
+void instruction_unpack(instruction_t instruction_bytes, Instruction *out_instruction)
+{
+    out_instruction->op_code = (instruction_bytes & INSTRUCTION_OP_CODE_MASK) >> 24;
+    out_instruction->literal = instruction_bytes & INSTRUCTION_LITERAL_MASK;
+}

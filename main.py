@@ -1,5 +1,7 @@
 import os
+
 from NarrativeLanguage import scanner, parser
+from NarrativeLanguage.macro_substitution import replace_macros
 from NarrativeLanguage.formatter import FORMATTER
 from NarrativeLanguage.variable_solver import VariableSolver
 
@@ -14,6 +16,7 @@ def main():
     path = "./example.txt"
     with open(path, "r") as f:
         source_code = f.read()
+        source_code = replace_macros(source_code)
 
         # Scan tokens
         scan = scanner.Scanner(source_code)
