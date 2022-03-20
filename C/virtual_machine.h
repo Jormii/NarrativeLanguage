@@ -6,12 +6,22 @@
 
 typedef struct VirtualMachine_st
 {
-    Stack stack;
+    // Program data
     Header header;
     uint8_t *program_bytes;
+
+    // Execution data
+    uint8_t executing;
+    uint32_t pc;
+    Stack stack;
+    Instruction inst; // Instruction being executed at a given time
+    uint8_t *visible_options;
+    int32_t v1;
+    int32_t v2;
 } VirtualMachine;
 
 VirtualMachine *vm_load_program(const char *program_path);
 void vm_execute(VirtualMachine *vm);
+void vm_destroy(VirtualMachine *vm);
 
 #endif

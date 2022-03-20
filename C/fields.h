@@ -4,16 +4,18 @@
 #include "op_code.h"
 
 //* HEADER *//
-#define HEADER_OPTIONS_COUNTER_MASK 0x000000FF
-#define HEADER_STACK_SIZE_MASK 0x0000FF00
-#define HEADER_INSTRUCTIONS_OFFSET_MASK 0xFFFF0000
+#define HEADER_OPTIONS_COUNT_MASK 0xFFFF0000
+#define HEADER_INTEGERS_COUNT_MASK 0x0000FFFF
+#define HEADER_INSTRUCTIONS_OFFSET_MASK 0xFFFFFF00
+#define HEADER_STACK_SIZE_MASK 0x000000FF
 
-typedef uint32_t header_t;
+typedef uint64_t header_t;
 typedef struct Header_st
 {
-    uint8_t options_counter;
+    uint16_t options_count;
+    uint16_t integers_count;
+    uint32_t instructions_offset;
     uint8_t stack_size;
-    uint16_t instructions_offset;
 } Header;
 
 void header_unpack(header_t header_bytes, Header *out_header);

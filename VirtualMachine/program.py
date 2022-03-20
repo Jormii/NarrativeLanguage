@@ -63,9 +63,7 @@ class CompoundString:
             self.compound_strings = compound_strings
 
         def unwrap(self):
-            # Substract 1 because the program will increase the PC by 1
-            # after executing the instruction
-            pc = self.compound_strings[self.identifier].pc - 1
+            pc = self.compound_strings[self.identifier].pc
             return inst.LiteralInstruction(self.op_code, pc)
 
     def __init__(self, string):
@@ -185,13 +183,21 @@ class Offsets:
         self.used_variables.add(identifier)
         return Offsets.OffsetInstruction(op_code, identifier, self)
 
+    def count_integers(self, solver: vs.VariableSolver):
+        n_ints = 0
+        for identifier in self.used_variables:
+            variable = solver.read(identifier)
+            if variable.value.value_type == variables.INT_TYPE:
+                n_ints += 1
+
+        return n_ints
+
 
 class Option:
 
-    def __init__(self, string_identifier, block_stmt, offset):
+    def __init__(self, string_identifier, block_stmt):
         self.string_identifier = string_identifier
         self.block_stmt = block_stmt
-        self.offset = offset
         self.pc = None
         self.string_pc = None
 
@@ -202,7 +208,7 @@ class Program:
         self.statements = statements
         self.solver = solver
 
-        self.base_offset = types.HeaderField(0, 0, 0).size_in_bytes()
+        self.base_offset = types.HeaderField.size()
         self.instructions = []
         self.max_stack_size = 0
         self.offsets = Offsets()
@@ -335,8 +341,8 @@ class Program:
 
         print("\n-- OPTIONS --")
         for option in self.options:
-            print("{} ({}): {} - {}".format(option.offset, hex(option.offset),
-                  option.pc, self.solver.read(option.string_identifier)))
+            print("PC {} - {}".format(option.pc,
+                  self.solver.read(option.string_identifier)))
 
         print("\n-- INSTRUCTIONS --")
         print("Stack size: {}".format(self.max_stack_size))
@@ -379,8 +385,12 @@ class Program:
         return
 
     def _transpile_store_stmt(self, stmt):
-        # This statement doesn't affect the execution of the program
-        return
+        # Translates to no instructions
+        # Declare the identifier as used to store it later
+
+        assignment_stmt = stmt.assignment_stmt
+        identifier = vs.identifier_from_token(assignment_stmt.identifier_token)
+        self.offsets.used_variables.add(identifier)
 
     def _transpile_assignment_stmt(self, stmt):
         # -- STACK --
@@ -438,13 +448,12 @@ class Program:
         value = vs.value_from_token(stmt.string_token)
         identifier = vs.anonymous_identifier(value)
 
-        offset = self.base_offset + \
-            len(self.options) * types.OptionField(0, 0).size_in_bytes()
-        option = Option(identifier, stmt.block_stmt, offset)
+        index = len(self.options)
+        option = Option(identifier, stmt.block_stmt)
 
         self.options.append(option)
         self._add_instructions(
-            inst.LiteralInstruction(inst.OpCode.DISPLAY, offset))
+            inst.LiteralInstruction(inst.OpCode.DISPLAY, index))
 
     # endregion
 

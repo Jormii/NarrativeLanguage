@@ -20,3 +20,8 @@ int32_t stack_pop(Stack *stack)
     stack->curr_size -= 1;
     return stack->ptr[stack->curr_size];
 }
+
+void stack_clear(Stack *stack)
+{
+    stack->curr_size = 0;
+}

@@ -4,31 +4,25 @@
 
 #include "virtual_machine.h"
 
-typedef struct VMContext_st
-{
-    uint8_t executing;
-    uint32_t pc;
-    int32_t v1;
-    int32_t v2;
-    Instruction instruction;
-    VirtualMachine *vm;
-} VMContext;
-
 #define STRING_BUFFER_SIZE 512
 wchar_t print_buffer[STRING_BUFFER_SIZE + 1];
 wchar_t aux_buffer[STRING_BUFFER_SIZE + 1];
 
-void vm_instruction_decode(VMContext *context);
-void op_print(VMContext *context);
-void op_printi(VMContext *context);
-void op_prints(VMContext *context);
-void op_printsl(VMContext *context);
-void op_endl(VMContext *context);
-void op_read(VMContext *context);
-void op_write(VMContext *context);
-void op_call(VMContext *context);
-void op_unary(VMContext *context);
-void op_binary(VMContext *context);
+void vm_instruction_decode(VirtualMachine *vm);
+void vm_show_options(VirtualMachine *vm);
+
+void op_print(VirtualMachine *vm);
+void op_read(VirtualMachine *vm);
+void op_write(VirtualMachine *vm);
+void op_call(VirtualMachine *vm);
+void op_unary(VirtualMachine *vm);
+void op_binary(VirtualMachine *vm);
+
+void format_string(VirtualMachine *vm, uint32_t pc);
+void op_printi(VirtualMachine *vm);
+void op_prints(VirtualMachine *vm);
+void op_printsl(VirtualMachine *vm);
+void op_endl(VirtualMachine *vm);
 
 VirtualMachine *vm_load_program(const char *program_path)
 {
@@ -57,6 +51,13 @@ VirtualMachine *vm_load_program(const char *program_path)
     // Init stack
     stack_init(&(vm->stack), vm->header.stack_size);
 
+    // Init visible options
+    vm->visible_options = malloc(vm->header.options_count * sizeof(uint8_t));
+    for (uint16_t i = 0; i < vm->header.options_count; ++i)
+    {
+        vm->visible_options[i] = 0;
+    }
+
     return vm;
 }
 
@@ -66,167 +67,253 @@ void vm_execute(VirtualMachine *vm)
     print_buffer[STRING_BUFFER_SIZE] = '\0';
     aux_buffer[STRING_BUFFER_SIZE] = '\0';
 
-    // Initialize
-    VMContext context;
-    context.pc = 0;
-    context.executing = 1;
-    context.vm = vm;
+    // Reset execution variables
+    vm->executing = 1;
+    vm->pc = 0;
+    stack_clear(&(vm->stack));
+    for (uint16_t i = 0; i < vm->header.options_count; ++i)
+    {
+        vm->visible_options[i] = 0;
+    }
 
     // Execute
-    while (context.executing)
+    while (vm->executing)
     {
-        vm_instruction_decode(&context);
-        switch (context.instruction.op_code)
+        vm_instruction_decode(vm);
+        switch (vm->inst.op_code)
         {
         case PUSH:
-            stack_push(&(vm->stack), context.instruction.literal);
+            stack_push(&(vm->stack), vm->inst.literal);
             break;
         case POP:
             stack_pop(&(vm->stack));
             break;
         case PRINT:
-            op_print(&context);
-            break;
-        case PRINTI:
-            op_printi(&context);
-            break;
-        case PRINTS:
-            op_prints(&context);
-            break;
-        case PRINTSL:
-            op_printsl(&context);
-            break;
-        case ENDL:
-            op_endl(&context);
+            op_print(vm);
             break;
         case DISPLAY:
-            printf("DISPLAY left to implement\n");
-            exit(2);
+            vm->visible_options[vm->inst.literal] = 1;
             break;
         case READ:
-            op_read(&context);
+            op_read(vm);
             break;
         case WRITE:
-            op_write(&context);
+            op_write(vm);
             break;
         case IJUMP:
-            context.pc = context.instruction.literal;
+            vm->pc = vm->inst.literal;
             break;
         case CJUMP:
             if (!stack_pop(&(vm->stack)))
             {
-                context.pc = context.instruction.literal;
+                vm->pc = vm->inst.literal;
             }
             break;
         case CALL:
-            op_call(&context);
+            op_call(vm);
             break;
         case NEG:
-            op_unary(&context);
-            stack_push(&(context.vm->stack), -context.v1);
+            op_unary(vm);
+            stack_push(&(vm->stack), -(vm->v1));
             break;
         case NOT:
-            op_unary(&context);
-            stack_push(&(context.vm->stack), !context.v1);
+            op_unary(vm);
+            stack_push(&(vm->stack), !(vm->v1));
             break;
         case ADD:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 + context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 + vm->v2);
             break;
         case SUB:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 - context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 - vm->v2);
             break;
         case MUL:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 * context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 * vm->v2);
             break;
         case DIV:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 / context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 / vm->v2);
             break;
         case EQ:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 == context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 == vm->v2);
             break;
         case NEQ:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 != context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 != vm->v2);
             break;
         case LT:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 < context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 < vm->v2);
             break;
         case LTE:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 <= context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 <= vm->v2);
             break;
         case GT:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 > context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 > vm->v2);
             break;
         case GTE:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 >= context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 >= vm->v2);
             break;
         case AND:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 && context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 && vm->v2);
             break;
         case OR:
-            op_binary(&context);
-            stack_push(&(vm->stack), context.v1 || context.v2);
+            op_binary(vm);
+            stack_push(&(vm->stack), vm->v1 || vm->v2);
             break;
         case EOX:
-            context.executing = 0;
+            vm->executing = 0;
             break;
         default:
-            printf("Unknown OpCode %u\n", context.instruction.op_code);
+            printf("Unknown OpCode %u\n", vm->inst.op_code);
             exit(1);
         }
 
-        context.pc += 1;
+        vm->pc += 1;
+    }
+
+    vm_show_options(vm);
+}
+
+void vm_destroy(VirtualMachine *vm)
+{
+    free(vm->program_bytes);
+    free(vm->stack.ptr);
+    free(vm->visible_options);
+    free(vm);
+}
+
+void vm_instruction_decode(VirtualMachine *vm)
+{
+    // Instruction bytes
+    uint8_t *base_ptr = vm->program_bytes + vm->header.instructions_offset;
+    instruction_t *inst_bytes_ptr = (instruction_t *)(base_ptr) + vm->pc;
+
+    instruction_unpack(*inst_bytes_ptr, &(vm->inst));
+}
+
+void vm_show_options(VirtualMachine *vm)
+{
+    Option option;
+    option_t *base_ptr = (option_t *)(vm->program_bytes + sizeof(header_t));
+    for (uint16_t i = 0; i < vm->header.options_count; ++i)
+    {
+        if (!vm->visible_options[i])
+        {
+            continue;
+        }
+
+        option_t option_bytes = *(base_ptr + i);
+        option_unpack(option_bytes, &option);
+
+        format_string(vm, option.string_pc);
+        wprintf(L"> %u == %ls\n", i, print_buffer);
     }
 }
 
-void vm_instruction_decode(VMContext *context)
+void op_print(VirtualMachine *vm)
 {
-    // Instruction bytes
-    VirtualMachine *vm = context->vm;
-    uint8_t *base_ptr = vm->program_bytes + vm->header.instructions_offset;
-    instruction_t *inst_bytes_ptr = (instruction_t *)(base_ptr) + context->pc;
-
-    instruction_unpack(*inst_bytes_ptr, &(context->instruction));
+    format_string(vm, vm->inst.literal);
+    wprintf(L"%ls\n", print_buffer);
 }
 
-void op_print(VMContext *context)
+void op_read(VirtualMachine *vm)
 {
-    stack_push(&(context->vm->stack), context->pc);
-    context->pc = context->instruction.literal;
+    int_t *int_ptr = (int_t *)(vm->program_bytes + vm->inst.literal);
+    uint32_t value = (*int_ptr) & INT_LITERAL_MASK;
+    stack_push(&(vm->stack), value);
 }
 
-void op_printi(VMContext *context)
+void op_write(VirtualMachine *vm)
 {
-    int32_t value = stack_pop(&(context->vm->stack));
+    // TODO: Read about bit manipulation
+    int_t *int_ptr = (int_t *)(vm->program_bytes + vm->inst.literal);
+    int32_t value = stack_pop(&(vm->stack));
+    *int_ptr = ((*int_ptr) & INT_STORE_FLAG_MASK) + value;
+}
+
+void op_call(VirtualMachine *vm)
+{
+    printf("op_call yet to implement\n");
+    exit(2);
+}
+
+void op_unary(VirtualMachine *vm)
+{
+    vm->v1 = stack_pop(&(vm->stack));
+}
+
+void op_binary(VirtualMachine *vm)
+{
+    vm->v1 = stack_pop(&(vm->stack));
+    vm->v2 = stack_pop(&(vm->stack));
+}
+
+void format_string(VirtualMachine *vm, uint32_t pc)
+{
+    // Set first bits as '\0'
+    print_buffer[0] = '\0';
+    aux_buffer[0] = '\0';
+
+    // We treat formatting options as its own program execution
+    uint32_t old_pc = vm->pc;
+    vm->pc = pc;
+    vm->executing = 1;
+    while (vm->executing)
+    {
+        vm_instruction_decode(vm);
+        switch (vm->inst.op_code)
+        {
+        case PRINTI:
+            op_printi(vm);
+            break;
+        case PRINTS:
+            op_prints(vm);
+            break;
+        case PRINTSL:
+            op_printsl(vm);
+            break;
+        case ENDL:
+            op_endl(vm);
+            break;
+        default:
+            printf("FORMAT: Unknown OpCode %u\n", vm->inst.op_code);
+            exit(1);
+        }
+
+        vm->pc += 1;
+    }
+
+    vm->executing = 1;
+    vm->pc = old_pc;
+}
+
+void op_printi(VirtualMachine *vm)
+{
+    int32_t value = stack_pop(&(vm->stack));
     swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%d", value);
     wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
 }
 
-void op_prints(VMContext *context)
+void op_prints(VirtualMachine *vm)
 {
-    wchar_t *str_ptr = (wchar_t *)stack_pop(&(context->vm->stack));
-    swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%s", str_ptr);
+    wchar_t *str_ptr = (wchar_t *)stack_pop(&(vm->stack));
+    swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%ls", str_ptr);
     wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
 }
 
-void op_printsl(VMContext *context)
+void op_printsl(VirtualMachine *vm)
 {
-    VirtualMachine *vm = context->vm;
-    Instruction *instruction = &(context->instruction);
-
     // Copy content to aux buffer
     uint32_t i = 0;
-    uint16_t *str_ptr = (uint16_t *)(vm->program_bytes + instruction->literal);
+    uint16_t *str_ptr = (uint16_t *)(vm->program_bytes + vm->inst.literal);
     while (str_ptr[i] != '\0')
     {
         aux_buffer[i] = str_ptr[i];
@@ -237,56 +324,7 @@ void op_printsl(VMContext *context)
     wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
 }
 
-void op_endl(VMContext *context)
+void op_endl(VirtualMachine *vm)
 {
-    uint32_t i = 0;
-    while (print_buffer[i] != L'\0')
-    {
-        wprintf(L"%c", print_buffer[i]);
-        i += 1;
-    }
-    wprintf(L"\n");
-
-    // Set first bits as '\0' for next prints
-    print_buffer[0] = '\0';
-    aux_buffer[0] = '\0';
-
-    // Restore PC
-    context->pc = stack_pop(&(context->vm->stack));
-}
-
-void op_read(VMContext *context)
-{
-    VirtualMachine *vm = context->vm;
-    const Instruction *instruction = &(context->instruction);
-
-    int_t *int_ptr = (int_t *)(vm->program_bytes + instruction->literal);
-    uint32_t value = (*int_ptr) & INT_LITERAL_MASK;
-    stack_push(&(vm->stack), value);
-}
-
-void op_write(VMContext *context)
-{
-    VirtualMachine *vm = context->vm;
-    const Instruction *instruction = &(context->instruction);
-
-    // TODO: Read about bit manipulation
-    int_t *int_ptr = (int_t *)(vm->program_bytes + instruction->literal);
-    int32_t value = stack_pop(&(vm->stack));
-    *int_ptr = ((*int_ptr) & INT_STORE_FLAG_MASK) + value;
-}
-
-void op_call(VMContext *context)
-{
-}
-
-void op_unary(VMContext *context)
-{
-    context->v1 = stack_pop(&(context->vm->stack));
-}
-
-void op_binary(VMContext *context)
-{
-    context->v1 = stack_pop(&(context->vm->stack));
-    context->v2 = stack_pop(&(context->vm->stack));
+    vm->executing = 0;
 }

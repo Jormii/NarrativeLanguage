@@ -24,34 +24,52 @@ class VmField:
 
 class HeaderField(VmField):
 
-    # Bits [31-16]: Instruction offset
-    # Bits [15-8]: Stack size
-    # Bits [7-0]: Options counter
+    # Two uint32
+    # First uint: Variables data
+    # - Bits [31-16]: Options count
+    # - Bits [15-0]: Integers count
+    # Second uint: Instructions data
+    # - Bits [31-8]: Instructions offset
+    # - Bits [7-0]: Stack size
 
-    def __init__(self, instruction_offset, stack_size, options_counter):
-        self.instruction_offset = instruction_offset
+    def __init__(self, options_count, integers_count, instructions_offset, stack_size):
+        self.options_count = options_count
+        self.integers_count = integers_count
+        self.instructions_offset = instructions_offset
         self.stack_size = stack_size
-        self.options_counter = options_counter
 
         super().__init__()
 
     def _can_be_represented(self):
-        return can_be_represented_unsigned(self.instruction_offset, 16) and \
-            can_be_represented_unsigned(self.stack_size, 8) and \
-            can_be_represented_unsigned(self.options_counter, 8)
+        return can_be_represented_unsigned(self.options_count, 16) and \
+            can_be_represented_unsigned(self.integers_count, 16) and \
+            can_be_represented_unsigned(self.instructions_offset, 24) and \
+            can_be_represented_unsigned(self.stack_size, 8)
 
     def numpy_class(self):
-        return np.uint32
+        return np.uint64
 
     def to_bytes(self):
-        inst_offset = self.instruction_offset << 16
-        stack_size = self.stack_size << 8
+        # First half
+        options_count = self.options_count << 48
+        integers_count = self.integers_count << 32
+
+        # Second half
+        instructions_offset = self.instructions_offset << 8
+        stack_size = self.stack_size
 
         c = self.numpy_class()
-        return c(inst_offset + stack_size + self.options_counter).tobytes()
+        n = options_count + integers_count + instructions_offset + stack_size
+        return c(n).tobytes()
 
     def __repr__(self):
-        return "HEADER {}, {}".format(self.instruction_offset, self.options_counter)
+        return "HEADER {}, {}, {}, {}".format(
+            self.options_count, self.integers_count,
+            self.instructions_offset, self.stack_size)
+
+    @staticmethod
+    def size():
+        return HeaderField(0, 0, 0, 0).size_in_bytes()
 
 
 class OptionField(VmField):

@@ -13,9 +13,6 @@ int main()
     }
 
     vm_execute(vm);
-    free(vm->program_bytes);
-    free(vm->stack.ptr);
-    free(vm);
-
+    vm_destroy(vm);
     return 0;
 }
