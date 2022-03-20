@@ -9,16 +9,20 @@ wchar_t print_buffer[STRING_BUFFER_SIZE + 1];
 wchar_t aux_buffer[STRING_BUFFER_SIZE + 1];
 
 void vm_instruction_decode(VirtualMachine *vm);
+void vm_show_options(VirtualMachine *vm);
+
 void op_print(VirtualMachine *vm);
-void op_printi(VirtualMachine *vm);
-void op_prints(VirtualMachine *vm);
-void op_printsl(VirtualMachine *vm);
-void op_endl(VirtualMachine *vm);
 void op_read(VirtualMachine *vm);
 void op_write(VirtualMachine *vm);
 void op_call(VirtualMachine *vm);
 void op_unary(VirtualMachine *vm);
 void op_binary(VirtualMachine *vm);
+
+void format_string(VirtualMachine *vm, uint32_t pc);
+void op_printi(VirtualMachine *vm);
+void op_prints(VirtualMachine *vm);
+void op_printsl(VirtualMachine *vm);
+void op_endl(VirtualMachine *vm);
 
 VirtualMachine *vm_load_program(const char *program_path)
 {
@@ -87,21 +91,8 @@ void vm_execute(VirtualMachine *vm)
         case PRINT:
             op_print(vm);
             break;
-        case PRINTI:
-            op_printi(vm);
-            break;
-        case PRINTS:
-            op_prints(vm);
-            break;
-        case PRINTSL:
-            op_printsl(vm);
-            break;
-        case ENDL:
-            op_endl(vm);
-            break;
         case DISPLAY:
-            printf("DISPLAY left to implement\n");
-            exit(2);
+            vm->visible_options[vm->inst.literal] = 1;
             break;
         case READ:
             op_read(vm);
@@ -187,6 +178,8 @@ void vm_execute(VirtualMachine *vm)
 
         vm->pc += 1;
     }
+
+    vm_show_options(vm);
 }
 
 void vm_destroy(VirtualMachine *vm)
@@ -206,57 +199,29 @@ void vm_instruction_decode(VirtualMachine *vm)
     instruction_unpack(*inst_bytes_ptr, &(vm->inst));
 }
 
+void vm_show_options(VirtualMachine *vm)
+{
+    Option option;
+    option_t *base_ptr = (option_t *)(vm->program_bytes + sizeof(header_t));
+    for (uint16_t i = 0; i < vm->header.options_count; ++i)
+    {
+        if (!vm->visible_options[i])
+        {
+            continue;
+        }
+
+        option_t option_bytes = *(base_ptr + i);
+        option_unpack(option_bytes, &option);
+
+        format_string(vm, option.string_pc);
+        wprintf(L"> %u == %ls\n", i, print_buffer);
+    }
+}
+
 void op_print(VirtualMachine *vm)
 {
-    stack_push(&(vm->stack), vm->pc);
-    vm->pc = vm->inst.literal;
-}
-
-void op_printi(VirtualMachine *vm)
-{
-    int32_t value = stack_pop(&(vm->stack));
-    swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%d", value);
-    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
-}
-
-void op_prints(VirtualMachine *vm)
-{
-    wchar_t *str_ptr = (wchar_t *)stack_pop(&(vm->stack));
-    swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%s", str_ptr);
-    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
-}
-
-void op_printsl(VirtualMachine *vm)
-{
-    // Copy content to aux buffer
-    uint32_t i = 0;
-    uint16_t *str_ptr = (uint16_t *)(vm->program_bytes + vm->inst.literal);
-    while (str_ptr[i] != '\0')
-    {
-        aux_buffer[i] = str_ptr[i];
-        i += 1;
-    }
-    aux_buffer[i] = '\0';
-
-    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
-}
-
-void op_endl(VirtualMachine *vm)
-{
-    uint32_t i = 0;
-    while (print_buffer[i] != L'\0')
-    {
-        wprintf(L"%c", print_buffer[i]);
-        i += 1;
-    }
-    wprintf(L"\n");
-
-    // Set first bits as '\0' for next prints
-    print_buffer[0] = '\0';
-    aux_buffer[0] = '\0';
-
-    // Restore PC
-    vm->pc = stack_pop(&(vm->stack));
+    format_string(vm, vm->inst.literal);
+    wprintf(L"%ls\n", print_buffer);
 }
 
 void op_read(VirtualMachine *vm)
@@ -289,4 +254,77 @@ void op_binary(VirtualMachine *vm)
 {
     vm->v1 = stack_pop(&(vm->stack));
     vm->v2 = stack_pop(&(vm->stack));
+}
+
+void format_string(VirtualMachine *vm, uint32_t pc)
+{
+    // Set first bits as '\0'
+    print_buffer[0] = '\0';
+    aux_buffer[0] = '\0';
+
+    // We treat formatting options as its own program execution
+    uint32_t old_pc = vm->pc;
+    vm->pc = pc;
+    vm->executing = 1;
+    while (vm->executing)
+    {
+        vm_instruction_decode(vm);
+        switch (vm->inst.op_code)
+        {
+        case PRINTI:
+            op_printi(vm);
+            break;
+        case PRINTS:
+            op_prints(vm);
+            break;
+        case PRINTSL:
+            op_printsl(vm);
+            break;
+        case ENDL:
+            op_endl(vm);
+            break;
+        default:
+            printf("FORMAT: Unknown OpCode %u\n", vm->inst.op_code);
+            exit(1);
+        }
+
+        vm->pc += 1;
+    }
+
+    vm->executing = 1;
+    vm->pc = old_pc;
+}
+
+void op_printi(VirtualMachine *vm)
+{
+    int32_t value = stack_pop(&(vm->stack));
+    swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%d", value);
+    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
+}
+
+void op_prints(VirtualMachine *vm)
+{
+    wchar_t *str_ptr = (wchar_t *)stack_pop(&(vm->stack));
+    swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%ls", str_ptr);
+    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
+}
+
+void op_printsl(VirtualMachine *vm)
+{
+    // Copy content to aux buffer
+    uint32_t i = 0;
+    uint16_t *str_ptr = (uint16_t *)(vm->program_bytes + vm->inst.literal);
+    while (str_ptr[i] != '\0')
+    {
+        aux_buffer[i] = str_ptr[i];
+        i += 1;
+    }
+    aux_buffer[i] = '\0';
+
+    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
+}
+
+void op_endl(VirtualMachine *vm)
+{
+    vm->executing = 0;
 }
