@@ -185,6 +185,15 @@ class Offsets:
         self.used_variables.add(identifier)
         return Offsets.OffsetInstruction(op_code, identifier, self)
 
+    def count_integers(self, solver: vs.VariableSolver):
+        n_ints = 0
+        for identifier in self.used_variables:
+            variable = solver.read(identifier)
+            if variable.value.value_type == variables.INT_TYPE:
+                n_ints += 1
+
+        return n_ints
+
 
 class Option:
 
@@ -202,7 +211,7 @@ class Program:
         self.statements = statements
         self.solver = solver
 
-        self.base_offset = types.HeaderField(0, 0, 0).size_in_bytes()
+        self.base_offset = types.HeaderField.size()
         self.instructions = []
         self.max_stack_size = 0
         self.offsets = Offsets()
@@ -381,7 +390,7 @@ class Program:
     def _transpile_store_stmt(self, stmt):
         # Translates to no instructions
         # Declare the identifier as used to store it later
-        
+
         assignment_stmt = stmt.assignment_stmt
         identifier = vs.identifier_from_token(assignment_stmt.identifier_token)
         self.offsets.used_variables.add(identifier)
