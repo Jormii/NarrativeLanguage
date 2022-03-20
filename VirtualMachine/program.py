@@ -379,8 +379,12 @@ class Program:
         return
 
     def _transpile_store_stmt(self, stmt):
-        # This statement doesn't affect the execution of the program
-        return
+        # Translates to no instructions
+        # Declare the identifier as used to store it later
+        
+        assignment_stmt = stmt.assignment_stmt
+        identifier = vs.identifier_from_token(assignment_stmt.identifier_token)
+        self.offsets.used_variables.add(identifier)
 
     def _transpile_assignment_stmt(self, stmt):
         # -- STACK --
