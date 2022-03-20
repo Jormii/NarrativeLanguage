@@ -13,5 +13,6 @@ typedef struct Stack_st
 void stack_init(Stack *stack, uint8_t size);
 void stack_push(Stack *stack, int32_t value);
 int32_t stack_pop(Stack *stack);
+void stack_clear(Stack *stack);
 
 #endif
