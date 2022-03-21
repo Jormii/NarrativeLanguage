@@ -9,9 +9,8 @@
 wchar_t print_buffer[STRING_BUFFER_SIZE + 1];
 wchar_t aux_buffer[STRING_BUFFER_SIZE + 1];
 
+void vm_execute_pc(VirtualMachine *vm, uint32_t pc);
 void vm_instruction_decode(VirtualMachine *vm);
-void vm_show_options(VirtualMachine *vm);
-
 void op_print(VirtualMachine *vm);
 void op_read(VirtualMachine *vm);
 void op_write(VirtualMachine *vm);
@@ -63,18 +62,46 @@ VirtualMachine *vm_load_program(const char *program_path)
 
 void vm_execute(VirtualMachine *vm)
 {
-    // Clear string buffers
-    print_buffer[STRING_BUFFER_SIZE] = '\0';
-    aux_buffer[STRING_BUFFER_SIZE] = '\0';
-
-    // Reset execution variables
-    vm->executing = 1;
-    vm->pc = 0;
     stack_clear(&(vm->stack));
     for (uint16_t i = 0; i < vm->header.options_count; ++i)
     {
         vm->visible_options[i] = 0;
     }
+
+    vm_execute_pc(vm, 0);
+}
+
+void vm_display_options(VirtualMachine *vm)
+{
+    Option option;
+    option_t *base_ptr = (option_t *)(vm->program_bytes + sizeof(header_t));
+    for (uint16_t i = 0; i < vm->header.options_count; ++i)
+    {
+        if (!vm->visible_options[i])
+        {
+            continue;
+        }
+
+        option_t option_bytes = *(base_ptr + i);
+        option_unpack(option_bytes, &option);
+
+        format_string(vm, option.string_pc);
+        wprintf(L"> %u == %ls\n", i, print_buffer);
+    }
+}
+
+void vm_destroy(VirtualMachine *vm)
+{
+    free(vm->program_bytes);
+    free(vm->stack.ptr);
+    free(vm->visible_options);
+    free(vm);
+}
+
+void vm_execute_pc(VirtualMachine *vm, uint32_t pc)
+{
+    vm->executing = 1;
+    vm->pc = pc;
 
     // Execute
     while (vm->executing)
@@ -90,6 +117,18 @@ void vm_execute(VirtualMachine *vm)
             break;
         case PRINT:
             op_print(vm);
+            break;
+        case PRINTI:
+            op_printi(vm);
+            break;
+        case PRINTS:
+            op_prints(vm);
+            break;
+        case PRINTSL:
+            op_printsl(vm);
+            break;
+        case ENDL:
+            op_endl(vm);
             break;
         case DISPLAY:
             vm->visible_options[vm->inst.literal] = 1;
@@ -178,16 +217,6 @@ void vm_execute(VirtualMachine *vm)
 
         vm->pc += 1;
     }
-
-    vm_show_options(vm);
-}
-
-void vm_destroy(VirtualMachine *vm)
-{
-    free(vm->program_bytes);
-    free(vm->stack.ptr);
-    free(vm->visible_options);
-    free(vm);
 }
 
 void vm_instruction_decode(VirtualMachine *vm)
@@ -199,29 +228,15 @@ void vm_instruction_decode(VirtualMachine *vm)
     instruction_unpack(*inst_bytes_ptr, &(vm->inst));
 }
 
-void vm_show_options(VirtualMachine *vm)
-{
-    Option option;
-    option_t *base_ptr = (option_t *)(vm->program_bytes + sizeof(header_t));
-    for (uint16_t i = 0; i < vm->header.options_count; ++i)
-    {
-        if (!vm->visible_options[i])
-        {
-            continue;
-        }
-
-        option_t option_bytes = *(base_ptr + i);
-        option_unpack(option_bytes, &option);
-
-        format_string(vm, option.string_pc);
-        wprintf(L"> %u == %ls\n", i, print_buffer);
-    }
-}
-
 void op_print(VirtualMachine *vm)
 {
+    uint32_t old_pc = vm->pc;
+
     format_string(vm, vm->inst.literal);
     wprintf(L"%ls\n", print_buffer);
+
+    vm->executing = 1;
+    vm->pc = old_pc;
 }
 
 void op_read(VirtualMachine *vm)
@@ -252,50 +267,11 @@ void op_binary(VirtualMachine *vm)
 
 void format_string(VirtualMachine *vm, uint32_t pc)
 {
-    // TODO: This is brittle and unnecessary duplication.
-    //      Merge normal execution and printing
-
-    // Set first bits as '\0'
+    // Set first bits to '\0'
     print_buffer[0] = '\0';
     aux_buffer[0] = '\0';
 
-    // We treat formatting options as its own program execution
-    uint32_t old_pc = vm->pc;
-    vm->pc = pc;
-    vm->executing = 1;
-    while (vm->executing)
-    {
-        vm_instruction_decode(vm);
-        switch (vm->inst.op_code)
-        {
-        case PRINTI:
-            op_printi(vm);
-            break;
-        case PRINTS:
-            op_prints(vm);
-            break;
-        case PRINTSL:
-            op_printsl(vm);
-            break;
-        case ENDL:
-            op_endl(vm);
-            break;
-        case READ:
-            op_read(vm);
-            break;
-        case CALL:
-            vm_call_function(vm, vm->inst.literal);
-            break;
-        default:
-            printf("FORMAT: Unknown OpCode %u\n", vm->inst.op_code);
-            exit(1);
-        }
-
-        vm->pc += 1;
-    }
-
-    vm->executing = 1;
-    vm->pc = old_pc;
+    vm_execute_pc(vm, pc);
 }
 
 void op_printi(VirtualMachine *vm)

@@ -22,6 +22,7 @@ typedef struct VirtualMachine_st
 
 VirtualMachine *vm_load_program(const char *program_path);
 void vm_execute(VirtualMachine *vm);
+void vm_display_options(VirtualMachine *vm);
 void vm_destroy(VirtualMachine *vm);
 
 #endif
