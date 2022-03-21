@@ -7,6 +7,7 @@ from NarrativeLanguage.variable_solver import VariableSolver
 
 from VirtualMachine.program import Program
 from VirtualMachine.program_binary import ProgramBinary
+from VirtualMachine.c_call_interface import create_interface
 from VirtualMachine.custom_functions import prototypes
 
 DEBUG = True
@@ -52,7 +53,9 @@ def main():
         base, _ = os.path.splitext(path)
         out_path = "{}.bin".format(base)
         binary = ProgramBinary(program)
+
         binary.write_to_file(out_path)
+        create_interface(program)
 
 
 if __name__ == "__main__":

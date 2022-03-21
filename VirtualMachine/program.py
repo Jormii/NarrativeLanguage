@@ -314,9 +314,11 @@ class Program:
             if instruction.op_code == inst.OpCode.CALL:
                 modification = 1    # Defaults to return value
 
-                # Previous instructions pushes the number of args
-                n_args_inst = self.instructions[i - 1]
-                modification -= (1 + n_args_inst.literal)
+                func_hash = instruction.literal
+                func_identifier = self.solver.hashes_functions[func_hash]
+                func_prototype = self.solver.function_prototypes.get(
+                    func_identifier)
+                modification -= len(func_prototype.params_types)
             else:
                 modification = inst.STACK_MODIFICATION[instruction.op_code]
 
@@ -476,8 +478,6 @@ class Program:
 
     def _transpile_function_call_expr(self, expr):
         # -- STACK --
-        # Offset to store
-        # N args
         # Arg0
         # Arg1
         # ...
@@ -488,10 +488,7 @@ class Program:
 
         for arg_expr in reversed(expr.arguments):
             self._transpiler.visit(arg_expr)
-        self._add_instructions([
-            inst.push_inst(len(expr.arguments)),
-            inst.LiteralInstruction(inst.OpCode.CALL, hash)
-        ])
+        self._add_instructions(inst.LiteralInstruction(inst.OpCode.CALL, hash))
 
     def _transpile_unary_expr(self, expr):
         # -- STACK --
