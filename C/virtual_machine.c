@@ -2,6 +2,7 @@
 #include <wchar.h>
 #include <stdlib.h>
 
+#include "call_interface.h"
 #include "virtual_machine.h"
 
 #define STRING_BUFFER_SIZE 512
@@ -14,7 +15,6 @@ void vm_show_options(VirtualMachine *vm);
 void op_print(VirtualMachine *vm);
 void op_read(VirtualMachine *vm);
 void op_write(VirtualMachine *vm);
-void op_call(VirtualMachine *vm);
 void op_unary(VirtualMachine *vm);
 void op_binary(VirtualMachine *vm);
 
@@ -110,7 +110,7 @@ void vm_execute(VirtualMachine *vm)
             }
             break;
         case CALL:
-            op_call(vm);
+            vm_call_function(vm, vm->inst.literal);
             break;
         case NEG:
             op_unary(vm);
@@ -239,12 +239,6 @@ void op_write(VirtualMachine *vm)
     *int_ptr = ((*int_ptr) & INT_STORE_FLAG_MASK) + value;
 }
 
-void op_call(VirtualMachine *vm)
-{
-    printf("op_call yet to implement\n");
-    exit(2);
-}
-
 void op_unary(VirtualMachine *vm)
 {
     vm->v1 = stack_pop(&(vm->stack));
@@ -258,6 +252,9 @@ void op_binary(VirtualMachine *vm)
 
 void format_string(VirtualMachine *vm, uint32_t pc)
 {
+    // TODO: This is brittle and unnecessary duplication.
+    //      Merge normal execution and printing
+
     // Set first bits as '\0'
     print_buffer[0] = '\0';
     aux_buffer[0] = '\0';
@@ -282,6 +279,12 @@ void format_string(VirtualMachine *vm, uint32_t pc)
             break;
         case ENDL:
             op_endl(vm);
+            break;
+        case READ:
+            op_read(vm);
+            break;
+        case CALL:
+            vm_call_function(vm, vm->inst.literal);
             break;
         default:
             printf("FORMAT: Unknown OpCode %u\n", vm->inst.op_code);
