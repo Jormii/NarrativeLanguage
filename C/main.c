@@ -13,6 +13,7 @@ int main()
     }
 
     vm_execute(vm);
+    vm_display_options(vm);
     vm_destroy(vm);
     return 0;
 }
