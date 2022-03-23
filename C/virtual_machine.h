@@ -9,6 +9,8 @@ typedef struct VirtualMachine_st
     // Program data
     Header header;
     uint8_t *program_bytes;
+    size_t global_variables_count;
+    int_t *global_variables;
 
     // Execution data
     uint8_t executing;
@@ -21,7 +23,10 @@ typedef struct VirtualMachine_st
 } VirtualMachine;
 
 VirtualMachine *vm_load_program(const char *program_path);
-void vm_store_program(const VirtualMachine *vm, const char *program_path);
+uint8_t vm_load_global_variables(VirtualMachine *vm, const char *global_variables_path);
+void vm_store_program(const VirtualMachine *vm, const char *program_path,
+                      const char *global_variables_path);
+
 void vm_execute(VirtualMachine *vm);
 void vm_display_options(VirtualMachine *vm);
 void vm_destroy(VirtualMachine *vm);

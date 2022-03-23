@@ -15,6 +15,8 @@ typedef enum OpCode_en
     DISPLAY,
     READ,
     WRITE,
+    READG,
+    WRITEG,
     IJUMP,
     CJUMP,
 

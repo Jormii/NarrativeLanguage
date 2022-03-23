@@ -14,6 +14,8 @@ void vm_instruction_decode(VirtualMachine *vm);
 void op_print(VirtualMachine *vm);
 void op_read(VirtualMachine *vm);
 void op_write(VirtualMachine *vm);
+void op_readg(VirtualMachine *vm);
+void op_writeg(VirtualMachine *vm);
 void op_unary(VirtualMachine *vm);
 void op_binary(VirtualMachine *vm);
 
@@ -43,6 +45,9 @@ VirtualMachine *vm_load_program(const char *program_path)
     fread(vm->program_bytes, sizeof(uint8_t), file_size, fd);
     fclose(fd);
 
+    vm->global_variables = 0;
+    vm->global_variables_count = 0;
+
     // Init header field
     header_t header = *((header_t *)(vm->program_bytes));
     header_unpack(header, &(vm->header));
@@ -60,7 +65,30 @@ VirtualMachine *vm_load_program(const char *program_path)
     return vm;
 }
 
-void vm_store_program(const VirtualMachine *vm, const char *program_path)
+uint8_t vm_load_global_variables(VirtualMachine *vm, const char *global_variables_path)
+{
+    // Open file and get size in bytes
+    FILE *fd = fopen(global_variables_path, "rb");
+    if (fd == NULL)
+    {
+        printf("%s doesn't exist\n", global_variables_path);
+        return 0;
+    }
+
+    fseek(fd, 0, SEEK_END);
+    long file_size = ftell(fd);
+    fseek(fd, 0, SEEK_SET);
+
+    vm->global_variables_count = file_size / sizeof(int_t);
+    vm->global_variables = malloc(file_size);
+    fread(vm->global_variables, sizeof(int_t), vm->global_variables_count, fd);
+    fclose(fd);
+
+    return 1;
+}
+
+void vm_store_program(const VirtualMachine *vm, const char *program_path,
+                      const char *global_variables_path)
 {
     // Takes for granted the file exists and the path is the same as the one
     // passed to "vm_load_program"
@@ -72,6 +100,14 @@ void vm_store_program(const VirtualMachine *vm, const char *program_path)
     fseek(fd, offset, SEEK_CUR);
     fwrite(integers, sizeof(int_t), vm->header.integers_count, fd);
     fclose(fd);
+
+    // Write global variables
+    if (vm->global_variables != 0)
+    {
+        fd = fopen(global_variables_path, "rb+");
+        fwrite(vm->global_variables, sizeof(int_t), vm->global_variables_count, fd);
+        fclose(fd);
+    }
 }
 
 void vm_execute(VirtualMachine *vm)
@@ -107,6 +143,11 @@ void vm_display_options(VirtualMachine *vm)
 void vm_destroy(VirtualMachine *vm)
 {
     free(vm->program_bytes);
+    if (vm->global_variables != 0)
+    {
+        free(vm->global_variables);
+    }
+
     free(vm->stack.ptr);
     free(vm->visible_options);
     free(vm);
@@ -152,6 +193,12 @@ void vm_execute_pc(VirtualMachine *vm, uint32_t pc)
             break;
         case WRITE:
             op_write(vm);
+            break;
+        case READG:
+            op_readg(vm);
+            break;
+        case WRITEG:
+            op_writeg(vm);
             break;
         case IJUMP:
             vm->pc = vm->inst.literal;
@@ -262,6 +309,18 @@ void op_read(VirtualMachine *vm)
 void op_write(VirtualMachine *vm)
 {
     int_t *int_ptr = (int_t *)(vm->program_bytes + vm->inst.literal);
+    *int_ptr = stack_pop(&(vm->stack));
+}
+
+void op_readg(VirtualMachine *vm)
+{
+    int_t *int_ptr = (int_t *)(vm->global_variables + vm->inst.literal);
+    stack_push(&(vm->stack), *int_ptr);
+}
+
+void op_writeg(VirtualMachine *vm)
+{
+    int_t *int_ptr = (int_t *)(vm->global_variables + vm->inst.literal);
     *int_ptr = stack_pop(&(vm->stack));
 }
 
