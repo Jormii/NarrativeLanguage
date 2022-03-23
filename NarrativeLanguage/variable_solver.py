@@ -13,6 +13,7 @@ class VariableSolver:
         self.statements = statements
         self.function_prototypes = function_prototypes
         self.variables = variables.Variables()
+        self.global_variables_indices = {}
         self.hashes_functions = {}
 
         self._solver = Visitor()
@@ -74,6 +75,8 @@ class VariableSolver:
             "GLOBAL variable '{}' already defined".format(identifier)
 
         self.define(variables.VariableScope.GLOBAL_DEFINE, identifier, value)
+        self.global_variables_indices[identifier] = len(
+            self.global_variables_indices)
 
     def _solve_store_stmt(self, stmt):
         assignment_stmt = stmt.assignment_stmt

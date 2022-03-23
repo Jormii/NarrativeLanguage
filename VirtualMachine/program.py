@@ -401,8 +401,17 @@ class Program:
         self._transpiler.visit(stmt.assignment_expr)
 
         identifier = vs.identifier_from_token(stmt.identifier_token)
-        self._add_instructions(
-            self.offsets.wrap_instruction(inst.OpCode.WRITE, identifier))
+        variable = self.solver.read(identifier)
+        if variable.scope in [variables.VariableScope.GLOBAL_DECLARE,
+                              variables.VariableScope.GLOBAL_DEFINE]:
+            literal = self.solver.global_variables_indices[identifier]
+            literal *= types.IntField(0).size_in_bytes()
+            instruction = inst.LiteralInstruction(inst.OpCode.WRITEG, literal)
+        else:
+            instruction = self.offsets.wrap_instruction(
+                inst.OpCode.WRITE, identifier)
+
+        self._add_instructions(instruction)
 
     def _transpile_block_stmt(self, stmt):
         for stmt in stmt.statements:
@@ -470,8 +479,17 @@ class Program:
 
     def _transpile_variable_expr(self, expr):
         identifier = vs.identifier_from_token(expr.identifier_token)
-        self._add_instructions(
-            self.offsets.wrap_instruction(inst.OpCode.READ, identifier))
+        variable = self.solver.read(identifier)
+        if variable.scope in [variables.VariableScope.GLOBAL_DEFINE,
+                              variables.VariableScope.GLOBAL_DECLARE]:
+            literal = self.solver.global_variables_indices[identifier]
+            literal *= types.IntField(0).size_in_bytes()
+            instruction = inst.LiteralInstruction(inst.OpCode.READG, literal)
+        else:
+            instruction = self.offsets.wrap_instruction(
+                inst.OpCode.READ, identifier)
+
+        self._add_instructions(instruction)
 
     def _transpile_scene_identifier_expr(self, expr):
         raise NotImplementedError()

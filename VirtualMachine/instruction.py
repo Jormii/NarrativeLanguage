@@ -12,6 +12,8 @@ class OpCode(Enum):
     DISPLAY = auto()
     READ = auto()
     WRITE = auto()
+    READG = auto()      # Read global
+    WRITEG = auto()     # Write global
     IJUMP = auto()
     CJUMP = auto()  # Jumps if condition evaluates to False
 
@@ -47,6 +49,8 @@ STACK_MODIFICATION = {
     OpCode.DISPLAY: 0,
     OpCode.READ: 1,
     OpCode.WRITE: -1,
+    OpCode.READG: 1,
+    OpCode.WRITEG: -1,
     OpCode.IJUMP: 0,
     OpCode.CJUMP: -1,
 

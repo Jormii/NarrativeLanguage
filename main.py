@@ -55,6 +55,7 @@ def main():
         binary = ProgramBinary(program)
 
         binary.write_to_file(out_path)
+        binary.write_global_variables_to_file("./global.bin")
         create_interface(program)
 
 

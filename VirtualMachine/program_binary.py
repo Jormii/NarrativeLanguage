@@ -1,5 +1,7 @@
 import os
 
+from NarrativeLanguage.variables import VariableScope
+
 import VirtualMachine.types as types
 from VirtualMachine.program import Program
 
@@ -50,3 +52,18 @@ class ProgramBinary:
                 out_f.write(inst_field.to_bytes())
 
         print("{}: {}".format(path, os.path.getsize(path)))
+
+    def write_global_variables_to_file(self, path):
+        head, tail = os.path.split(path)
+
+        assert len(tail) != 0, "Path doesn't describe a file"
+        if not os.path.exists(head):
+            os.makedirs(head)
+
+        solver = self.program.solver
+        with open(path, "wb") as out_f:
+            for variable in solver.variables._in_order:
+                if variable.scope != VariableScope.GLOBAL_DEFINE:
+                    continue
+
+                out_f.write(types.IntField(variable.value.literal).to_bytes())
