@@ -60,6 +60,20 @@ VirtualMachine *vm_load_program(const char *program_path)
     return vm;
 }
 
+void vm_store_program(const VirtualMachine *vm, const char *program_path)
+{
+    // Takes for granted the file exists and the path is the same as the one
+    // passed to "vm_load_program"
+
+    size_t offset = sizeof(header_t) + vm->header.options_count * sizeof(option_t);
+    uint8_t *integers = vm->program_bytes + offset;
+
+    FILE *fd = fopen(program_path, "rb+");
+    fseek(fd, offset, SEEK_CUR);
+    fwrite(integers, sizeof(int_t), vm->header.integers_count, fd);
+    fclose(fd);
+}
+
 void vm_execute(VirtualMachine *vm)
 {
     stack_clear(&(vm->stack));

@@ -5,7 +5,8 @@
 
 int main()
 {
-    VirtualMachine *vm = vm_load_program("../example3.bin");
+    const char *program_path = "../example3.bin";
+    VirtualMachine *vm = vm_load_program(program_path);
     if (vm == 0)
     {
         printf("Could't load program\n");
@@ -14,6 +15,7 @@ int main()
 
     vm_execute(vm);
     vm_display_options(vm);
+    vm_store_program(vm, program_path);
     vm_destroy(vm);
     return 0;
 }
