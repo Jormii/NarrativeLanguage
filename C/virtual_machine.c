@@ -256,16 +256,13 @@ void op_print(VirtualMachine *vm)
 void op_read(VirtualMachine *vm)
 {
     int_t *int_ptr = (int_t *)(vm->program_bytes + vm->inst.literal);
-    uint32_t value = (*int_ptr) & INT_LITERAL_MASK;
-    stack_push(&(vm->stack), value);
+    stack_push(&(vm->stack), *int_ptr);
 }
 
 void op_write(VirtualMachine *vm)
 {
-    // TODO: Read about bit manipulation
     int_t *int_ptr = (int_t *)(vm->program_bytes + vm->inst.literal);
-    int32_t value = stack_pop(&(vm->stack));
-    *int_ptr = ((*int_ptr) & INT_STORE_FLAG_MASK) + value;
+    *int_ptr = stack_pop(&(vm->stack));
 }
 
 void op_unary(VirtualMachine *vm)

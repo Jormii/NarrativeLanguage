@@ -100,27 +100,24 @@ class OptionField(VmField):
 
 class IntField(VmField):
 
-    # Bits [31-24]: Store flag
-    # Bits [23-0]: Integer
+    # Bits [31-0]: Integer
 
-    def __init__(self, store_flag, literal):
-        self.store_flag = int(store_flag)
+    def __init__(self, literal):
         self.literal = literal
 
         super().__init__()
 
     def _can_be_represented(self):
-        return can_be_represented_unsigned(self.literal, 24)
+        return can_be_represented_signed(self.literal, 32)
 
     def numpy_class(self):
-        return np.uint32
+        return np.int32
 
     def to_bytes(self):
-        store_flag = self.store_flag << 24
-        return self.numpy_class()(store_flag + self.literal).tobytes()
+        return self.numpy_class()(self.literal).tobytes()
 
     def __repr__(self):
-        return "INT {}, {}".format(self.store_flag, self.literal)
+        return "INT {}".format(self.literal)
 
 
 class FloatField(VmField):
@@ -206,10 +203,8 @@ def can_be_represented_unsigned(number, n_bits):
 
 
 def _int_from_variable(variable):
-    store_flag = variable.scope == variables.VariableScope.STORE
     literal = variable.value.literal
-
-    return IntField(store_flag, literal)
+    return IntField(literal)
 
 
 def _float_from_variable(variable):
@@ -221,7 +216,6 @@ def _float_from_variable(variable):
 
 def _string_from_variable(variable):
     string = variable.value.literal
-
     return StringField(string)
 
 

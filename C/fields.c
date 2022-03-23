@@ -17,12 +17,6 @@ void option_unpack(option_t option_bytes, Option *out_option)
     out_option->instructions_pc = option_bytes & OPTION_INSTRUCTIONS_PC_MASK;
 }
 
-void int_unpack(int_t int_bytes, Int *out_int)
-{
-    out_int->store_flag = (int_bytes & INT_STORE_FLAG_MASK) >> 24;
-    out_int->literal = int_bytes & INT_LITERAL_MASK;
-}
-
 void instruction_unpack(instruction_t instruction_bytes, Instruction *out_instruction)
 {
     out_instruction->op_code = (instruction_bytes & INSTRUCTION_OP_CODE_MASK) >> 24;

@@ -34,17 +34,7 @@ typedef struct Option_st
 void option_unpack(option_t option_bytes, Option *out_option);
 
 //* INT *//
-#define INT_STORE_FLAG_MASK 0xFF000000
-#define INT_LITERAL_MASK 0x00FFFFFF
-
-typedef uint32_t int_t;
-typedef struct Int_st
-{
-    uint8_t store_flag;
-    uint32_t literal;
-} Int;
-
-void int_unpack(int_t int_bytes, Int *out_int);
+typedef int32_t int_t;
 
 //* STRING *//
 typedef uint16_t string_t;
