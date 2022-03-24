@@ -63,11 +63,10 @@ class VariableScope(Enum):
 
 class Variable:
 
-    def __init__(self, scope, identifier, value, index):
+    def __init__(self, scope, identifier, value):
         self.scope = scope
         self.identifier = identifier
         self.value = value
-        self.index = index
 
     def __repr__(self):
         return "_{}_ {} = {}".format(
@@ -77,18 +76,14 @@ class Variable:
 class Variables:
 
     def __init__(self):
-        self._in_order = []
-        self._defined_identifiers = {}
+        self.variables = {}
 
     def is_defined(self, identifier):
-        return identifier in self._defined_identifiers
+        return identifier in self.variables
 
     def define(self, scope, identifier, value):
-        index = len(self._in_order)
-        variable = Variable(scope, identifier, value, index)
-
-        self._in_order.append(variable)
-        self._defined_identifiers[identifier] = variable
+        variable = Variable(scope, identifier, value)
+        self.variables[identifier] = variable
 
     def read(self, identifier):
-        return self._defined_identifiers[identifier]
+        return self.variables[identifier]

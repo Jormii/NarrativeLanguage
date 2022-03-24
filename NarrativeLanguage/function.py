@@ -1,3 +1,5 @@
+import hashlib
+
 import NarrativeLanguage.variables as variables
 
 
@@ -7,6 +9,7 @@ class Function:
         self.identifier = variables.Identifier(name)
         self.return_type = return_type
         self.params_types = params_types
+        self.hash = string_24b_hash(self.identifier.name)
 
         # TODO: Remove this later
         assert self.return_type != variables.FLOAT_TYPE, \
@@ -44,13 +47,24 @@ class FunctionPrototypes:
 
     def __init__(self):
         self.functions = {}
+        self.hashes = {}
 
     def is_defined(self, identifier):
         return identifier in self.functions
 
     def define(self, function):
+        assert function.hash not in self.hashes, \
+            "Hash collision: '{}' and '{}'".format(
+                function.hash, self.hashes[function.hash])
+
         self.functions[function.identifier] = function
+        self.hashes[function.hash] = function.identifier
         return self
 
     def get(self, identifier):
         return self.functions[identifier]
+
+
+def string_24b_hash(string):
+    utf16 = string.encode("utf-16")
+    return int.from_bytes(hashlib.sha256(utf16).digest()[:3], "little")

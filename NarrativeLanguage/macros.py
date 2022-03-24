@@ -1,5 +1,5 @@
-from utils.iwhere import IWhere
-from utils.string_traversal import StringTraversal
+from Utils.iwhere import IWhere
+from Utils.string_traversal import StringTraversal
 
 
 class Macro(IWhere):

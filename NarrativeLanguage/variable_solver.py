@@ -1,5 +1,3 @@
-import hashlib
-
 import NarrativeLanguage.variables as variables
 from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
@@ -9,12 +7,11 @@ from NarrativeLanguage.constexpr_interpreter import CONSTEXPR_INTERPRETER
 
 class VariableSolver:
 
-    def __init__(self, statements, function_prototypes):
+    def __init__(self, statements, global_variables, function_prototypes):
         self.statements = statements
+        self.global_variables = global_variables
         self.function_prototypes = function_prototypes
         self.variables = variables.Variables()
-        self.global_variables_indices = {}
-        self.hashes_functions = {}
 
         self._solver = Visitor()
         self._solver.submit(statement.Print, self._solve_print_stmt) \
@@ -45,7 +42,28 @@ class VariableSolver:
         self.variables.define(scope, identifier, value)
 
     def read(self, identifier):
-        return self.variables.read(identifier)
+        variable = self.variables.read(identifier)
+        if variable.scope in [variables.VariableScope.GLOBAL_DEFINE,
+                              variables.VariableScope.GLOBAL_DECLARE]:
+            return self.global_variables.read(identifier)
+
+        return variable
+
+    def _handle_global(self, scope, identifier, value):
+        if not self.global_variables.is_defined(identifier):
+
+            self.global_variables.define(scope, identifier, value)
+            return
+
+        variable = self.global_variables.read(identifier)
+        if variable.scope == variables.VariableScope.GLOBAL_DEFINE and \
+                scope == variables.VariableScope.GLOBAL_DEFINE:
+            exit("GLOBAL variable {} already defined in another file".format(identifier))
+
+        if variable.scope == variables.VariableScope.GLOBAL_DECLARE and \
+                scope == variables.VariableScope.GLOBAL_DEFINE:
+            self.global_variables.define(scope, identifier, value)
+
 
 # region Statements
 
@@ -62,9 +80,12 @@ class VariableSolver:
         identifier = identifier_from_token(stmt.identifier_token)
 
         assert not self.is_defined(identifier), \
-            "GLOBAL variable {} already defined".format(identifier)
+            "GLOBAL variable {} already defined/declared".format(identifier)
 
-        self.define(variables.VariableScope.GLOBAL_DECLARE, identifier, None)
+        scope = variables.VariableScope.GLOBAL_DECLARE
+        value = variables.Value(variables.INT_TYPE, 0)
+        self.define(scope, identifier, value)
+        self._handle_global(scope, identifier, value)
 
     def _solve_global_definition_stmt(self, stmt):
         assignment_stmt = stmt.assignment_stmt
@@ -72,11 +93,11 @@ class VariableSolver:
         value = CONSTEXPR_INTERPRETER.visit(assignment_stmt.assignment_expr)
 
         assert not self.is_defined(identifier), \
-            "GLOBAL variable '{}' already defined".format(identifier)
+            "GLOBAL variable '{}' already defined/declared".format(identifier)
 
-        self.define(variables.VariableScope.GLOBAL_DEFINE, identifier, value)
-        self.global_variables_indices[identifier] = len(
-            self.global_variables_indices)
+        scope = variables.VariableScope.GLOBAL_DEFINE
+        self.define(scope, identifier, value)
+        self._handle_global(scope, identifier, value)
 
     def _solve_store_stmt(self, stmt):
         assignment_stmt = stmt.assignment_stmt
@@ -168,15 +189,6 @@ class VariableSolver:
             "Provided arguments aren't compatible with function {}. Provided: {}".format(
                 prototype, args)
 
-        # Calculate hash
-        hash = string_24b_hash(identifier.name)
-        if hash in self.hashes_functions:
-            known_identifier = self.hashes_functions[hash]
-            assert known_identifier == identifier, \
-                "Collision: {} <-> {}".format(known_identifier, identifier)
-        else:
-            self.hashes_functions[hash] = identifier
-
         return variables.Value(prototype.return_type, 0)
 
     def _solve_unary_expr(self, expr):
@@ -224,8 +236,3 @@ def anonymous_identifier(value):
 
     name = "+{}".format(value.literal)
     return variables.Identifier(name)
-
-
-def string_24b_hash(string):
-    utf16 = string.encode("utf-16")
-    return int.from_bytes(hashlib.sha256(utf16).digest()[:3], "little")
