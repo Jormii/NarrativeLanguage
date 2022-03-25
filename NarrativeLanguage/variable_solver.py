@@ -3,7 +3,7 @@ from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
 from NarrativeLanguage.visitor import Visitor
 from NarrativeLanguage.constexpr_interpreter import CONSTEXPR_INTERPRETER
-from NarrativeLanguage.function import string_24b_hash
+from NarrativeLanguage.function import string_16b_hash
 
 
 class VariableSolver:
@@ -246,5 +246,5 @@ def anonymous_identifier(value):
 
 def scene_value_from_token(token):
     identifier = identifier_from_token(token)
-    hash = string_24b_hash(identifier.name)
+    hash = string_16b_hash(identifier.name)
     return variables.Value(variables.SCENE_IDENTIFIER_TYPE, hash)

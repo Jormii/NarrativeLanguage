@@ -9,7 +9,7 @@ class Function:
         self.identifier = variables.Identifier(name)
         self.return_type = return_type
         self.params_types = params_types
-        self.hash = string_24b_hash(self.identifier.name)
+        self.hash = string_16b_hash(self.identifier.name)
 
         # TODO: Remove this later
         assert self.return_type != variables.FLOAT_TYPE, \
@@ -65,6 +65,6 @@ class FunctionPrototypes:
         return self.functions[identifier]
 
 
-def string_24b_hash(string):
+def string_16b_hash(string):
     utf16 = string.encode("utf-16")
-    return int.from_bytes(hashlib.sha256(utf16).digest()[:3], "little")
+    return int.from_bytes(hashlib.sha256(utf16).digest()[:2], "little")

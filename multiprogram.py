@@ -1,5 +1,4 @@
 import os
-import pathlib
 
 from NarrativeLanguage.macros import Macros
 from NarrativeLanguage.scanner import Scanner
@@ -17,23 +16,19 @@ from Utils.iwhere import IWhere
 
 class Source(IWhere):
 
-    def __init__(self, path):
-        self.path = path
-        with open(self.path, "r") as fd:
-            self.text = fd.read()
+    def __init__(self, name, text):
+        self.name = name
+        self.text = text
 
     def where(self) -> str:
-        return "File {}".format(self.path)
+        return "File {}".format(self.name)
 
 
 class MultiProgram:
 
-    def __init__(self, source_paths, function_prototypes):
-        self.sources = []
+    def __init__(self, sources, function_prototypes):
+        self.sources = sources
         self.function_prototypes = function_prototypes
-
-        for path in source_paths:
-            self.sources.append(Source(path))
 
     def compile(self, output_dir):
         # Check and create output dir
@@ -50,18 +45,18 @@ class MultiProgram:
         macros = Macros()
 
         print("Finding macros...")
-        for source in self.sources:
+        for source in self.sources.values():
             macros.find_and_remove_macro_definitions(source)
 
         print("Replacing macros...")
-        for source in self.sources:
+        for source in self.sources.values():
             macros.replace_macros(source)
 
     def _scan_and_parse(self):
         print("Scanning and parsing...")
 
         sources_statements = []
-        for source in self.sources:
+        for source in self.sources.values():
             scanner = Scanner(source.text)
             scanner.scan()
 
@@ -109,26 +104,20 @@ class MultiProgram:
         print("Creating binaries...\n")
 
         scene_interface = SceneInterface()
-        for src, prgrm in zip(self.sources, programs):
-            filename_no_ext = pathlib.Path(src.path).stem
+        for src, prgrm in zip(self.sources.values(), programs):
             out_path = "{}.bin".format(
-                os.path.join(output_dir, filename_no_ext))
+                os.path.join(output_dir, src.name))
 
             binary = ProgramBinary(prgrm)
             binary.write_to_file(out_path)
             scene_interface.add_program_scenes(prgrm)
 
             txt_out_path = "{}_stringify.txt".format(
-                os.path.join(output_dir, filename_no_ext))
+                os.path.join(output_dir, src.name))
             with open(txt_out_path, "w") as fd:
                 prgrm.pretty_print(fd)
-
-        # TODO
-        NAME_FILE_MAPPING = {
-            "SCENE": "example3"
-        }
 
         gv_path = os.path.join(output_dir, "global.bin")
         ProgramBinary.write_global_vars_to_file(global_vars, gv_path)
         create_interface(self.function_prototypes, output_dir)
-        scene_interface.create_interface(NAME_FILE_MAPPING, output_dir)
+        scene_interface.create_interface(self.sources, output_dir)

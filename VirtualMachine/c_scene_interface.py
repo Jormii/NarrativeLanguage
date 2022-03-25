@@ -31,7 +31,7 @@ const char *scene_file(uint32_t hash) {{
 
 SWITCH_CASE_TEMPLATE = """
 case {hash}:
-    return "{scene_path}.bin";
+    return "{scene_name}.bin";
     break;
 """
 
@@ -49,9 +49,9 @@ class SceneInterface:
 
             self.scenes[hash] = identifier
 
-    def create_interface(self, name_file_mapping, out_dir):
+    def create_interface(self, sources, out_dir):
         header = self._create_header_file()
-        source = self._create_source_file(name_file_mapping)
+        source = self._create_source_file(sources)
 
         for payload, extension in [(header, "h"), (source, "c")]:
             file_path = os.path.join(
@@ -63,12 +63,15 @@ class SceneInterface:
     def _create_header_file(self):
         return H_TEMPLATE
 
-    def _create_source_file(self, name_file_mapping):
+    def _create_source_file(self, sources):
         switch_cases = ""
         for hash, identifier in self.scenes.items():
+            assert identifier.name in sources, \
+                "Unknown scene '{}'".format(identifier)
+
             switch_cases += SWITCH_CASE_TEMPLATE.format(
                 hash=hash,
-                scene_path=name_file_mapping[identifier.name])
+                scene_name=sources[identifier.name].name)
 
         return C_TEMPLATE.format(
             filename=FILENAME,
