@@ -10,7 +10,7 @@ typedef struct VirtualMachine_st
     Header header;
     uint8_t *program_bytes;
     size_t global_variables_count;
-    int_t *global_variables;
+    uint8_t *global_variables;
 
     // Execution data
     uint8_t executing;

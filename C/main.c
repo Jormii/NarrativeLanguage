@@ -5,8 +5,8 @@
 
 int main()
 {
-    const char *program_path = "../example3.bin";
-    const char *global_variables_path = "../global.bin";
+    const char *program_path = "../binaries/example.bin";
+    const char *global_variables_path = "../binaries/global.bin";
     VirtualMachine *vm = vm_load_program(program_path);
     if (vm == 0)
     {
