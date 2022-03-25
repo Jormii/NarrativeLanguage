@@ -141,10 +141,17 @@ class Offsets:
             self.offsets = offsets
 
         def unwrap(self):
-            offset = self.offsets.variables_offset[self.identifier]
+            solver = self.offsets.solver
+            variable = solver.read(self.identifier)
+            if variable.scope in [variables.VariableScope.GLOBAL_DEFINE,
+                                  variables.VariableScope.GLOBAL_DECLARE]:
+                offset = variable.index * types.IntField(0).size_in_bytes()
+            else:
+                offset = self.offsets.variables_offset[self.identifier]
             return inst.LiteralInstruction(self.op_code, offset)
 
-    def __init__(self):
+    def __init__(self, solver):
+        self.solver = solver
         self.offset = 0
         self.variables_offset = {}
         self.used_variables = set()
@@ -152,7 +159,7 @@ class Offsets:
     def calculate_offsets(self, solver: vs.VariableSolver):
         # Group variables by type
         by_type = {}
-        for variable in solver.variables._in_order:
+        for variable in solver.variables.variables.values():
             if variable.scope in [variables.VariableScope.GLOBAL_DEFINE,
                                   variables.VariableScope.GLOBAL_DECLARE]:
                 # Ignore global variables
@@ -211,7 +218,7 @@ class Program:
         self.base_offset = types.HeaderField.size()
         self.instructions = []
         self.max_stack_size = 0
-        self.offsets = Offsets()
+        self.offsets = Offsets(self.solver)
         self.compound_strings = self._initialize_strings()
         self.options = []
 
@@ -235,7 +242,7 @@ class Program:
 
     def _initialize_strings(self):
         defined_strings = []
-        for variable in self.solver.variables._in_order:
+        for variable in self.solver.variables.variables.values():
             if variable.value.value_type == variables.STRING_TYPE:
                 defined_strings.append(variable)
 
@@ -302,6 +309,7 @@ class Program:
             compound_string = self.compound_strings[option.string_identifier]
             option.string_pc = compound_string.pc
 
+    def unwrap_instructions(self):
         # Calculate offsets and maximum stack size and replace YieldInstruction
         # instructions
         self.offsets.offset = self.base_offset + \
@@ -315,7 +323,7 @@ class Program:
                 modification = 1    # Defaults to return value
 
                 func_hash = instruction.literal
-                func_identifier = self.solver.hashes_functions[func_hash]
+                func_identifier = self.solver.function_prototypes.hashes[func_hash]
                 func_prototype = self.solver.function_prototypes.get(
                     func_identifier)
                 modification -= len(func_prototype.params_types)
@@ -404,14 +412,12 @@ class Program:
         variable = self.solver.read(identifier)
         if variable.scope in [variables.VariableScope.GLOBAL_DECLARE,
                               variables.VariableScope.GLOBAL_DEFINE]:
-            literal = self.solver.global_variables_indices[identifier]
-            literal *= types.IntField(0).size_in_bytes()
-            instruction = inst.LiteralInstruction(inst.OpCode.WRITEG, literal)
+            op_code = inst.OpCode.WRITEG
         else:
-            instruction = self.offsets.wrap_instruction(
-                inst.OpCode.WRITE, identifier)
+            op_code = inst.OpCode.WRITE
 
-        self._add_instructions(instruction)
+        self._add_instructions(self.offsets.wrap_instruction(
+            op_code, identifier))
 
     def _transpile_block_stmt(self, stmt):
         for stmt in stmt.statements:
@@ -482,14 +488,12 @@ class Program:
         variable = self.solver.read(identifier)
         if variable.scope in [variables.VariableScope.GLOBAL_DEFINE,
                               variables.VariableScope.GLOBAL_DECLARE]:
-            literal = self.solver.global_variables_indices[identifier]
-            literal *= types.IntField(0).size_in_bytes()
-            instruction = inst.LiteralInstruction(inst.OpCode.READG, literal)
+            op_code = inst.OpCode.READG
         else:
-            instruction = self.offsets.wrap_instruction(
-                inst.OpCode.READ, identifier)
+            op_code = inst.OpCode.READ
 
-        self._add_instructions(instruction)
+        self._add_instructions(
+            self.offsets.wrap_instruction(op_code, identifier))
 
     def _transpile_scene_identifier_expr(self, expr):
         raise NotImplementedError()
@@ -502,7 +506,8 @@ class Program:
         # ArgN-1
 
         identifier = vs.identifier_from_token(expr.identifier_token)
-        hash = vs.string_24b_hash(identifier.name)
+        prototype = self.solver.function_prototypes.get(identifier)
+        hash = prototype.hash
 
         for arg_expr in reversed(expr.arguments):
             self._transpiler.visit(arg_expr)
