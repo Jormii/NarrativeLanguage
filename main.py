@@ -1,5 +1,5 @@
 from multiprogram import MultiProgram
-from VirtualMachine.custom_functions import prototypes
+from custom_functions import prototypes
 
 DEBUG = True
 

@@ -2,8 +2,6 @@
 *.txt
 
 /C/out
-/VirtualMachine/custom_functions.py
-
 /binaries/
 
 **/.vscode/

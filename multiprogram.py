@@ -105,6 +105,8 @@ class MultiProgram:
         return programs
 
     def _create_files(self, output_dir, programs, global_vars):
+        print("Creating binaries...\n")
+
         for src, prgrm in zip(self.sources, programs):
             filename_no_ext = pathlib.Path(src.path).stem
             out_path = "{}.bin".format(
