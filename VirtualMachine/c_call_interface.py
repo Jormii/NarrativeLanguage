@@ -1,6 +1,7 @@
+import os
+from NarrativeLanguage.function import FunctionPrototypes
 import NarrativeLanguage.variables as variables
 
-from VirtualMachine.program import Program
 
 FILENAME = "call_interface"
 
@@ -87,13 +88,14 @@ FORMATTERS = {
 }
 
 
-def create_interface(program: Program):
+def create_interface(function_prototypes: FunctionPrototypes, output_dir):
     header = _create_header_file()
-    source = _create_source_file(program)
+    source = _create_source_file(function_prototypes)
 
     for payload, extension in [(header, "h"), (source, "c")]:
-        filename = "./{}.{}".format(FILENAME, extension)
-        with open(filename, "w") as fd:
+        file_path = os.path.join(
+            output_dir, "{}.{}".format(FILENAME, extension))
+        with open(file_path, "w") as fd:
             fd.write(payload)
 
 
@@ -101,15 +103,13 @@ def _create_header_file():
     return H_TEMPLATE
 
 
-def _create_source_file(program):
+def _create_source_file(function_prototypes):
     declarations = ""
     switch_cases = ""
-    for func_hash, func_identifier in program.solver.hashes_functions.items():
-        prototype = program.solver.function_prototypes.get(func_identifier)
-
+    for prototype in function_prototypes.functions.values():
         declarations += _declaration_from_func_prototype(prototype)
         switch_cases += SWITCH_CASE_TEMPLATE.format(
-            hash=func_hash,
+            hash=prototype.hash,
             body=_body_from_func_prototype(prototype)
         )
 
@@ -135,7 +135,7 @@ def _body_from_func_prototype(prototype):
     for i, value_type in enumerate(prototype.params_types):
         argname = "a{}".format(i)
 
-        body += "{} = {}stack_pop(&(vm->stack));\n".format(
+        body += "{} = stack_pop(&(vm->stack));\n".format(
             FORMATTERS[value_type].format_arg(argname))
         argnames.append(argname)
 

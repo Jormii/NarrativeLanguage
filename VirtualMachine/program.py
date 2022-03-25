@@ -1,3 +1,5 @@
+import sys
+
 import NarrativeLanguage.variable_solver as vs
 import NarrativeLanguage.variables as variables
 
@@ -343,7 +345,13 @@ class Program:
 
             self.instructions[i] = instruction.unwrap()
 
-    def pretty_print(self):
+    def pretty_print(self, stream=None):
+        if stream is None:
+            stream = sys.stdout
+
+        stdout = sys.stdout
+        sys.stdout = stream
+
         print("\n-- VARIABLES --")
         for identifier, offset in self.offsets.variables_offset.items():
             print("{} ({}): {}".format(offset, hex(
@@ -360,6 +368,8 @@ class Program:
             offset = self.offsets.offset + pc * \
                 types.InstructionField(0, 0).size_in_bytes()
             print("{} ({}): {}".format(pc, hex(offset), instruction))
+
+        sys.stdout = stdout  # Undo
 
     def _add_instructions(self, instructions):
         if not isinstance(instructions, list):

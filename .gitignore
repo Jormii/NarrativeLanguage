@@ -1,10 +1,10 @@
 *.bin
 *.txt
 
-/call_interface.h
-/call_interface.c
 /C/out
 /VirtualMachine/custom_functions.py
+
+/binaries/
 
 **/.vscode/
 **/__pycache__/

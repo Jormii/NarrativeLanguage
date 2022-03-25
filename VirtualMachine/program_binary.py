@@ -53,17 +53,10 @@ class ProgramBinary:
 
         print("{}: {}".format(path, os.path.getsize(path)))
 
-    def write_global_variables_to_file(self, path):
-        head, tail = os.path.split(path)
+    @staticmethod
+    def write_global_vars_to_file(global_vars, path):
+        with open(path, "wb") as fd:
+            for i, variable in enumerate(global_vars.variables.values()):
+                assert i == variable.index
 
-        assert len(tail) != 0, "Path doesn't describe a file"
-        if not os.path.exists(head):
-            os.makedirs(head)
-
-        solver = self.program.solver
-        with open(path, "wb") as out_f:
-            for variable in solver.variables._in_order:
-                if variable.scope != VariableScope.GLOBAL_DEFINE:
-                    continue
-
-                out_f.write(types.IntField(variable.value.literal).to_bytes())
+                fd.write(types.IntField(variable.value.literal).to_bytes())

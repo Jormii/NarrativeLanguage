@@ -63,6 +63,8 @@ class VariableSolver:
         if variable.scope == variables.VariableScope.GLOBAL_DECLARE and \
                 scope == variables.VariableScope.GLOBAL_DEFINE:
             self.global_variables.define(scope, identifier, value)
+            v = self.global_variables.read(identifier)
+            v.index = variable.index
 
 
 # region Statements

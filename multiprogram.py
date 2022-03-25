@@ -1,4 +1,5 @@
 import os
+import pathlib
 
 from NarrativeLanguage.macros import Macros
 from NarrativeLanguage.scanner import Scanner
@@ -40,13 +41,9 @@ class MultiProgram:
 
         self._handle_macros()
         sources_statements = self._scan_and_parse()
-        solvers, global_variables = self._solve_variables(sources_statements)
-        
-        # Compilation
-        # - TRANSPILE INSTRUCTIONS
-        # - CREATE OFFSETS
-        # - WRITE OFFSETS TO INSTRUCTIONS
-        # - CREATE BINARIES
+        solvers, global_vars = self._solve_variables(sources_statements)
+        programs = self._create_programs(sources_statements, solvers)
+        self._create_files(output_dir, programs, global_vars)
 
     def _handle_macros(self):
         macros = Macros()
@@ -78,17 +75,49 @@ class MultiProgram:
         print("Solving variables...")
 
         solvers = []
-        global_variables = variables.Variables()
+        global_vars = variables.Variables()
 
         for statements in sources_statements:
-            solver = VariableSolver(statements, global_variables,
+            solver = VariableSolver(statements, global_vars,
                                     self.function_prototypes)
             solver.solve()
             solvers.append(solver)
 
-        for variable in global_variables.variables.values():
+        for variable in global_vars.variables.values():
             assert variable.scope == variables.VariableScope.GLOBAL_DEFINE, \
                 "Can't find definition of GLOBAL variable '{}'".format(
                     variable.identifier)
 
-        return solvers, global_variables
+        return solvers, global_vars
+
+    def _create_programs(self, sources_statements, solvers):
+        print("Generating instructions...")
+        programs = []
+        for stmts, slvr in zip(sources_statements, solvers):
+            program = Program(stmts, slvr)
+            program.transpile()
+            programs.append(program)
+
+        print("Calculating offsets and unwrapping...")
+        for program in programs:
+            program.unwrap_instructions()
+
+        return programs
+
+    def _create_files(self, output_dir, programs, global_vars):
+        for src, prgrm in zip(self.sources, programs):
+            filename_no_ext = pathlib.Path(src.path).stem
+            out_path = "{}.bin".format(
+                os.path.join(output_dir, filename_no_ext))
+
+            binary = ProgramBinary(prgrm)
+            binary.write_to_file(out_path)
+
+            txt_out_path = "{}_stringify.txt".format(
+                os.path.join(output_dir, filename_no_ext))
+            with open(txt_out_path, "w") as fd:
+                prgrm.pretty_print(fd)
+
+        gv_path = os.path.join(output_dir, "global.bin")
+        ProgramBinary.write_global_vars_to_file(global_vars, gv_path)
+        create_interface(self.function_prototypes, output_dir)
