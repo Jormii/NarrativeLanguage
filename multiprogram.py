@@ -9,6 +9,7 @@ from NarrativeLanguage import variables
 
 from VirtualMachine.program import Program
 from VirtualMachine.program_binary import ProgramBinary
+from VirtualMachine.c_scene_interface import SceneInterface
 from VirtualMachine.c_call_interface import create_interface
 
 from Utils.iwhere import IWhere
@@ -107,6 +108,7 @@ class MultiProgram:
     def _create_files(self, output_dir, programs, global_vars):
         print("Creating binaries...\n")
 
+        scene_interface = SceneInterface()
         for src, prgrm in zip(self.sources, programs):
             filename_no_ext = pathlib.Path(src.path).stem
             out_path = "{}.bin".format(
@@ -114,12 +116,19 @@ class MultiProgram:
 
             binary = ProgramBinary(prgrm)
             binary.write_to_file(out_path)
+            scene_interface.add_program_scenes(prgrm)
 
             txt_out_path = "{}_stringify.txt".format(
                 os.path.join(output_dir, filename_no_ext))
             with open(txt_out_path, "w") as fd:
                 prgrm.pretty_print(fd)
 
+        # TODO
+        NAME_FILE_MAPPING = {
+            "SCENE": "example3"
+        }
+
         gv_path = os.path.join(output_dir, "global.bin")
         ProgramBinary.write_global_vars_to_file(global_vars, gv_path)
         create_interface(self.function_prototypes, output_dir)
+        scene_interface.create_interface(NAME_FILE_MAPPING, output_dir)

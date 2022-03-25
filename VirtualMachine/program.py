@@ -223,6 +223,7 @@ class Program:
         self.offsets = Offsets(self.solver)
         self.compound_strings = self._initialize_strings()
         self.options = []
+        self.scenes = {}
 
         self._transpiler = Visitor()
         self._transpiler.submit(statement.Print, self._transpile_print_stmt) \
@@ -294,7 +295,8 @@ class Program:
                 else:
                     mapping = {
                         variables.INT_TYPE: inst.OpCode.PRINTI,
-                        variables.STRING_PTR_TYPE: inst.OpCode.PRINTS
+                        variables.STRING_PTR_TYPE: inst.OpCode.PRINTS,
+                        variables.SCENE_IDENTIFIER_TYPE: inst.OpCode.PRINTI
                     }
 
                     expr = field.expression()
@@ -506,7 +508,17 @@ class Program:
             self.offsets.wrap_instruction(op_code, identifier))
 
     def _transpile_scene_identifier_expr(self, expr):
-        raise NotImplementedError()
+        identifier = vs.identifier_from_token(expr.identifier_token)
+        value = vs.scene_value_from_token(expr.identifier_token)
+
+        hash = value.literal
+        if hash in self.scenes:
+            assert self.scenes[hash] == identifier, \
+                "Scene collision: {} <-> {}".format(
+                    identifier, self.scenes[hash])
+
+        self.scenes[hash] = identifier
+        self._add_instructions(inst.push_inst(value.literal))
 
     def _transpile_function_call_expr(self, expr):
         # -- STACK --

@@ -3,6 +3,7 @@ from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
 from NarrativeLanguage.visitor import Visitor
 from NarrativeLanguage.constexpr_interpreter import CONSTEXPR_INTERPRETER
+from NarrativeLanguage.function import string_24b_hash
 
 
 class VariableSolver:
@@ -118,6 +119,9 @@ class VariableSolver:
         assert value.value_type not in [variables.STRING_TYPE, variables.STRING_PTR_TYPE], \
             "Can't store strings"
 
+        assert value.value_type != variables.SCENE_IDENTIFIER_TYPE, \
+            "Can't store scene identifiers"
+
         if self.is_defined(identifier):
             variable = self.read(identifier)
             assert value.value_type == variable.value.value_type, \
@@ -175,7 +179,7 @@ class VariableSolver:
         return variable.value
 
     def _solve_scene_identifier_expr(self, expr):
-        raise NotImplementedError()
+        return scene_value_from_token(expr.identifier_token)
 
     def _solve_function_call_expr(self, expr):
         identifier = identifier_from_token(expr.identifier_token)
@@ -238,3 +242,9 @@ def anonymous_identifier(value):
 
     name = "+{}".format(value.literal)
     return variables.Identifier(name)
+
+
+def scene_value_from_token(token):
+    identifier = identifier_from_token(token)
+    hash = string_24b_hash(identifier.name)
+    return variables.Value(variables.SCENE_IDENTIFIER_TYPE, hash)
