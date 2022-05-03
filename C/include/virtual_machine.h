@@ -6,26 +6,25 @@
 
 struct
 {
-    // Program data
+    // Program exclusive data
     Header header;
     uint8_t *program_bytes;
+
+    // Global data
+    VMStack stack;
+    uint8_t *visible_options;
+    vm_int_t *global_variables;
     size_t global_variables_count;
-    uint8_t *global_variables;
 
     // Execution data
     uint8_t executing;
     uint32_t pc;
-    VMStack stack;
     Instruction inst; // Instruction being executed at a given time
-    uint8_t *visible_options;
-    int32_t v1;
+    int32_t v1;       // v1, v2: Left and right operands. Or single operand
     int32_t v2;
 } vm;
 
 uint8_t vm_load_program(const char *program_path);
-uint8_t vm_load_global_variables(const char *global_variables_path);
-void vm_store_program(const char *program_path, const char *global_variables_path);
-
 void vm_execute();
 void vm_display_options();
 

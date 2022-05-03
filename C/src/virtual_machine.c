@@ -2,6 +2,7 @@
 #include <wchar.h>
 #include <stdlib.h>
 
+#include "vm_io.h"
 #include "call_interface.h"
 #include "virtual_machine.h"
 
@@ -27,61 +28,23 @@ void op_endl();
 
 uint8_t vm_load_program(const char *program_path)
 {
-    // Open file and get size in bytes
-    FILE *fd = fopen(program_path, "rb");
-    if (fd == NULL)
+    VMFile file;
+    if (!vm_io_read_file(program_path, &file))
     {
-        printf("%s doesn't exist\n", program_path);
         return 0;
     }
 
-    fseek(fd, 0, SEEK_END);
-    long file_size = ftell(fd);
-    fseek(fd, 0, SEEK_SET);
-
-    // Read bytes
-    vm.program_bytes = malloc(file_size * sizeof(uint8_t));
-    fread(vm.program_bytes, sizeof(uint8_t), file_size, fd);
-    fclose(fd);
-
-    vm.global_variables = 0;
-    vm.global_variables_count = 0;
+    vm.program_bytes = file.buffer;
 
     // Init header field
     vm_header_t header = *((vm_header_t *)(vm.program_bytes));
     header_unpack(header, &(vm.header));
 
-    // Init stack
-    vm_stack_init(&(vm.stack), vm.header.stack_size);
-
     // Init visible options
-    vm.visible_options = malloc(vm.header.options_count * sizeof(uint8_t));
     for (uint16_t i = 0; i < vm.header.options_count; ++i)
     {
         vm.visible_options[i] = 0;
     }
-
-    return 1;
-}
-
-uint8_t vm_load_global_variables(const char *global_variables_path)
-{
-    // Open file and get size in bytes
-    FILE *fd = fopen(global_variables_path, "rb");
-    if (fd == NULL)
-    {
-        printf("%s doesn't exist\n", global_variables_path);
-        return 0;
-    }
-
-    fseek(fd, 0, SEEK_END);
-    long file_size = ftell(fd);
-    fseek(fd, 0, SEEK_SET);
-
-    vm.global_variables_count = file_size / sizeof(vm_int_t);
-    vm.global_variables = malloc(file_size);
-    fread(vm.global_variables, sizeof(vm_int_t), vm.global_variables_count, fd);
-    fclose(fd);
 
     return 1;
 }
