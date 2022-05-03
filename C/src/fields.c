@@ -1,6 +1,6 @@
 #include "fields.h"
 
-void header_unpack(header_t header_bytes, Header *out_header)
+void header_unpack(vm_header_t header_bytes, Header *out_header)
 {
     uint32_t vars_data_bytes = (header_bytes & 0xFFFFFFFF00000000) >> 32;
     uint32_t insts_data_bytes = header_bytes & 0x00000000FFFFFFFF;
@@ -11,13 +11,13 @@ void header_unpack(header_t header_bytes, Header *out_header)
     out_header->stack_size = insts_data_bytes & HEADER_STACK_SIZE_MASK;
 }
 
-void option_unpack(option_t option_bytes, Option *out_option)
+void option_unpack(vm_option_t option_bytes, Option *out_option)
 {
     out_option->string_pc = (option_bytes & OPTION_STRING_FORMAT_PC_MASK) >> 16;
     out_option->instructions_pc = option_bytes & OPTION_INSTRUCTIONS_PC_MASK;
 }
 
-void instruction_unpack(instruction_t instruction_bytes, Instruction *out_instruction)
+void instruction_unpack(vm_instruction_t instruction_bytes, Instruction *out_instruction)
 {
     out_instruction->op_code = (instruction_bytes & INSTRUCTION_OP_CODE_MASK) >> 24;
     out_instruction->literal = instruction_bytes & INSTRUCTION_LITERAL_MASK;

@@ -1,4 +1,4 @@
 #!/bin/bash
 
-SRC_FILES="stack.c fields.c functions.c call_interface.c virtual_machine.c main.c"
-gcc $SRC_FILES -o out -I ./ -Wall -g
+SRC_FILES="./src/vm_stack.c ./src/fields.c ./src/functions.c ./src/virtual_machine.c ./call_interface.c ./main.c"
+gcc $SRC_FILES -o out -I ./include/ -Wall -g
