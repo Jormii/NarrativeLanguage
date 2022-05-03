@@ -7,15 +7,19 @@
 
 struct
 {
+    uint8_t program_loaded;
     const char *binaries_dir;
     const char *global_vars_path;
     char program_path[512]; // Program being executed
 } vm_context;
 
 uint8_t load_global_variables();
+extern void save_program(const char *path);
+extern void save_global_variables(const char *path);
 
 uint8_t vm_manager_initialize(const VMInitialization *init_values)
 {
+    vm_context.program_loaded = 0;
     vm_context.binaries_dir = init_values->binaries_dir;
     vm_context.global_vars_path = init_values->global_vars_path;
 
@@ -31,9 +35,21 @@ uint8_t vm_manager_initialize(const VMInitialization *init_values)
 
 uint8_t vm_manager_load_program(const char *program_filename)
 {
+    if (vm_context.program_loaded)
+    {
+        save_program(vm_context.program_path);
+        if (vm_context.global_vars_path)
+        {
+            save_global_variables(vm_context.global_vars_path);
+        }
+    }
+
     strcpy(vm_context.program_path, vm_context.binaries_dir);
     strcat(vm_context.program_path, program_filename);
-    return vm_load_program(vm_context.program_path);
+    uint8_t success = vm_load_program(vm_context.program_path);
+    vm_context.program_loaded = success;
+
+    return success;
 }
 
 uint8_t load_global_variables()

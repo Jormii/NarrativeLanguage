@@ -31,6 +31,6 @@ int main()
 
     vm_execute();
     vm_display_options();
-    // vm_store_program(program_path, global_variables_path);
+
     return 0;
 }
