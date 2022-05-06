@@ -10,7 +10,7 @@ struct
     uint8_t program_loaded;
     const char *binaries_dir;
     const char *global_vars_path;
-    char program_path[512]; // Program being executed
+    char program_path[128]; // Program being executed
 } vm_context;
 
 uint8_t load_global_variables();
@@ -38,6 +38,8 @@ uint8_t vm_manager_load_program(const char *program_filename)
     if (vm_context.program_loaded)
     {
         save_program(vm_context.program_path);
+        free(vm.program_bytes);
+
         if (vm_context.global_vars_path)
         {
             save_global_variables(vm_context.global_vars_path);
