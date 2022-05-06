@@ -40,40 +40,12 @@ uint8_t vm_load_program(const char *program_path)
     vm_header_t header = *((vm_header_t *)(vm.program_bytes));
     header_unpack(header, &(vm.header));
 
-    // Init visible options
-    for (uint16_t i = 0; i < vm.header.options_count; ++i)
-    {
-        vm.visible_options[i] = 0;
-    }
-
     return 1;
-}
-
-void vm_store_program(const char *program_path, const char *global_variables_path)
-{
-    // Takes for granted the file exists and the path is the same as the one
-    // passed to "vm_load_program"
-
-    size_t offset = sizeof(vm_header_t) + vm.header.options_count * sizeof(vm_option_t);
-    uint8_t *integers = vm.program_bytes + offset;
-
-    FILE *fd = fopen(program_path, "rb+");
-    fseek(fd, offset, SEEK_CUR);
-    fwrite(integers, sizeof(vm_int_t), vm.header.integers_count, fd);
-    fclose(fd);
-
-    // Write global variables
-    if (vm.global_variables != 0)
-    {
-        fd = fopen(global_variables_path, "rb+");
-        fwrite(vm.global_variables, sizeof(vm_int_t), vm.global_variables_count, fd);
-        fclose(fd);
-    }
 }
 
 void vm_execute()
 {
-    vm_stack_clear(&(vm.stack));
+    vm_stack_clear(&(vm.stack)); // TODO: Probably unnecessary
     for (uint16_t i = 0; i < vm.header.options_count; ++i)
     {
         vm.visible_options[i] = 0;
@@ -97,7 +69,7 @@ void vm_display_options()
         option_unpack(option_bytes, &option);
 
         format_string(option.string_pc);
-        wprintf(L"> %u == %ls\n", i, print_buffer);
+        vm_print_option(i, print_buffer);
     }
 }
 
@@ -109,7 +81,7 @@ void vm_execute_pc(uint32_t pc)
     // Execute
     while (vm.executing)
     {
-        vm_instruction_decode(vm);
+        vm_instruction_decode();
         switch (vm.inst.op_code)
         {
         case PUSH:
@@ -119,34 +91,34 @@ void vm_execute_pc(uint32_t pc)
             vm_stack_pop(&(vm.stack));
             break;
         case PRINT:
-            op_print(vm);
+            op_print();
             break;
         case PRINTI:
-            op_printi(vm);
+            op_printi();
             break;
         case PRINTS:
-            op_prints(vm);
+            op_prints();
             break;
         case PRINTSL:
-            op_printsl(vm);
+            op_printsl();
             break;
         case ENDL:
-            op_endl(vm);
+            op_endl();
             break;
         case DISPLAY:
             vm.visible_options[vm.inst.literal] = 1;
             break;
         case READ:
-            op_read(vm);
+            op_read();
             break;
         case WRITE:
-            op_write(vm);
+            op_write();
             break;
         case READG:
-            op_readg(vm);
+            op_readg();
             break;
         case WRITEG:
-            op_writeg(vm);
+            op_writeg();
             break;
         case IJUMP:
             vm.pc = vm.inst.literal;
@@ -161,65 +133,66 @@ void vm_execute_pc(uint32_t pc)
             vm_call_function(vm.inst.literal);
             break;
         case NEG:
-            op_unary(vm);
+            op_unary();
             vm_stack_push(&(vm.stack), -(vm.v1));
             break;
         case NOT:
-            op_unary(vm);
+            op_unary();
             vm_stack_push(&(vm.stack), !(vm.v1));
             break;
         case ADD:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 + vm.v2);
             break;
         case SUB:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 - vm.v2);
             break;
         case MUL:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 * vm.v2);
             break;
         case DIV:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 / vm.v2);
             break;
         case EQ:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 == vm.v2);
             break;
         case NEQ:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 != vm.v2);
             break;
         case LT:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 < vm.v2);
             break;
         case LTE:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 <= vm.v2);
             break;
         case GT:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 > vm.v2);
             break;
         case GTE:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 >= vm.v2);
             break;
         case AND:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 && vm.v2);
             break;
         case OR:
-            op_binary(vm);
+            op_binary();
             vm_stack_push(&(vm.stack), vm.v1 || vm.v2);
             break;
         case EOX:
             vm.executing = 0;
             break;
         default:
+            // TODO: Implement some way of redirecting errors
             printf("Unknown OpCode %u\n", vm.inst.op_code);
             exit(1);
         }

@@ -27,5 +27,6 @@ struct
 uint8_t vm_load_program(const char *program_path);
 void vm_execute();
 void vm_display_options();
+extern void vm_print_option(uint16_t index, const wchar_t *string);
 
 #endif
