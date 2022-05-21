@@ -1,28 +1,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <unistd.h>
+#include <stdio.h>
+#include <limits.h>
+
+#include "callbacks.h"
+#include "vm_manager.h"
 #include "virtual_machine.h"
 
 int main()
 {
-    const char *program_path = "../binaries/example.bin";
-    const char *global_variables_path = "../binaries/global.bin";
-    VirtualMachine *vm = vm_load_program(program_path);
-    if (vm == 0)
+    VMInitialization init_values = {
+        .max_options = MAX_OPTIONS,
+        .max_stack_size = MAX_STACK_SIZE,
+        .binaries_dir = "../binaries/",
+        .global_vars_path = "../binaries/global.bin",
+
+        .call_cb = call_cb,
+        .print_cb = print_cb,
+        .print_option_cb = print_option_cb,
+        .read_cb = read_file_cb,
+        .save_program_cb = save_program_cb,
+        .save_global_vars_cb = save_global_vars_cb};
+
+    if (!vm_manager_initialize(&init_values))
     {
-        printf("Could't load program\n");
+        printf("Couldn't initialize VM\n");
         return 1;
     }
 
-    if (vm_load_global_variables(vm, global_variables_path) == 0)
+    const char *program_filename = "Escena.bin";
+    if (!vm_manager_load_program(program_filename))
     {
-        printf("Couldn't load global variables\n");
+        printf("Couldn't load program\n");
         return 1;
     }
 
-    vm_execute(vm);
-    vm_display_options(vm);
-    vm_store_program(vm, program_path, global_variables_path);
-    vm_destroy(vm);
+    vm_execute();
+    vm_display_options();
+
     return 0;
 }

@@ -1,4 +1,5 @@
 #!/bin/bash
 
-SRC_FILES="stack.c fields.c functions.c call_interface.c virtual_machine.c main.c"
-gcc $SRC_FILES -o out -I ./ -Wall -g
+SRC_FILES="./src/vm_stack.c ./src/fields.c ./src/virtual_machine.c ./src/vm_manager.c
+    ./functions.c ./call_interface.c ./callbacks.c ./main.c"
+gcc $SRC_FILES -o out -I ./include/ -Wall -Wextra -Wshadow -Wpedantic -g -D MAX_OPTIONS=2 -D MAX_STACK_SIZE=2

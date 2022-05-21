@@ -24,6 +24,25 @@ class Source(IWhere):
         return "File {}".format(self.name)
 
 
+class VMInitialization:
+
+    def __init__(self):
+        self.max_options = 0
+        self.max_stack_size = 0
+
+    def update(self, program: Program):
+        self.max_options = max(self.max_options, len(program.options))
+        self.max_stack_size = max(self.max_stack_size, program.max_stack_size)
+
+    def write_to(self, output_dir):
+        output_file = os.path.join(output_dir, "_STATS_.txt")
+        with open(output_file, "w") as fd:
+            fd.write("Options: {}\nStack: {}".format(
+                self.max_options,
+                self.max_stack_size
+            ))
+
+
 class MultiProgram:
 
     def __init__(self, sources, function_prototypes):
@@ -104,6 +123,7 @@ class MultiProgram:
         print("Creating binaries...\n")
 
         scene_interface = SceneInterface()
+        vm_initialization = VMInitialization()
         for src, prgrm in zip(self.sources.values(), programs):
             out_path = "{}.bin".format(
                 os.path.join(output_dir, src.name))
@@ -111,6 +131,7 @@ class MultiProgram:
             binary = ProgramBinary(prgrm)
             binary.write_to_file(out_path)
             scene_interface.add_program_scenes(prgrm)
+            vm_initialization.update(prgrm)
 
             txt_out_path = "{}_stringify.txt".format(
                 os.path.join(output_dir, src.name))
@@ -121,3 +142,5 @@ class MultiProgram:
         ProgramBinary.write_global_vars_to_file(global_vars, gv_path)
         create_interface(self.function_prototypes, output_dir)
         scene_interface.create_interface(self.sources, output_dir)
+        
+        vm_initialization.write_to(output_dir)

@@ -1,8 +1,6 @@
 #ifndef OP_CODE_H
 #define OP_CODE_H
 
-#include <stdint.h>
-
 typedef enum OpCode_en
 {
     PUSH,
