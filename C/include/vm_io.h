@@ -10,6 +10,6 @@ typedef struct VMFile
     void *buffer;
 } VMFile;
 
-extern uint8_t vm_io_read_file(const char *path, VMFile *out_file);
+typedef uint8_t (*VmIoReadFile_cb)(const char *path, VMFile *out_file);
 
 #endif

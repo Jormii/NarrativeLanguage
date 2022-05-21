@@ -29,7 +29,7 @@ void op_endl();
 uint8_t vm_load_program(const char *program_path)
 {
     VMFile file;
-    if (!vm_io_read_file(program_path, &file))
+    if (!vm.read_cb(program_path, &file))
     {
         return 0;
     }
@@ -69,7 +69,7 @@ void vm_display_options()
         option_unpack(option_bytes, &option);
 
         format_string(option.string_pc);
-        vm_print_option(i, print_buffer);
+        vm.print_option_cb(i, print_buffer);
     }
 }
 
@@ -130,7 +130,7 @@ void vm_execute_pc(uint32_t pc)
             }
             break;
         case CALL:
-            vm_call_function(vm.inst.literal);
+            vm.call_cb(vm.inst.literal);
             break;
         case NEG:
             op_unary();
@@ -215,7 +215,7 @@ void op_print()
     uint32_t old_pc = vm.pc;
 
     format_string(vm.inst.literal);
-    wprintf(L"%ls\n", print_buffer);
+    vm.print_cb(print_buffer);
 
     vm.executing = 1;
     vm.pc = old_pc;

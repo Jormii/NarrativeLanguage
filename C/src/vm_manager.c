@@ -11,17 +11,25 @@ struct
     const char *binaries_dir;
     const char *global_vars_path;
     char program_path[128]; // Program being executed
+
+    VmManagerSaveProgram_cb save_program_cb;
+    VmManagerSaveGlobalVars_cb save_global_vars_cb;
 } vm_context;
 
 uint8_t load_global_variables();
-extern void save_program(const char *path);
-extern void save_global_variables(const char *path);
 
 uint8_t vm_manager_initialize(const VMInitialization *init_values)
 {
     vm_context.program_loaded = 0;
     vm_context.binaries_dir = init_values->binaries_dir;
     vm_context.global_vars_path = init_values->global_vars_path;
+
+    vm.call_cb = init_values->call_cb;
+    vm.print_cb = init_values->print_cb;
+    vm.print_option_cb = init_values->print_option_cb;
+    vm.read_cb = init_values->read_cb;
+    vm_context.save_program_cb = init_values->save_program_cb;
+    vm_context.save_global_vars_cb = init_values->save_global_vars_cb;
 
     vm_stack_init(&(vm.stack), init_values->max_stack_size);
     vm.visible_options = malloc(init_values->max_options * sizeof(uint8_t));
@@ -37,12 +45,12 @@ uint8_t vm_manager_load_program(const char *program_filename)
 {
     if (vm_context.program_loaded)
     {
-        save_program(vm_context.program_path);
+        vm_context.save_program_cb(vm_context.program_path);
         free(vm.program_bytes);
 
         if (vm_context.global_vars_path)
         {
-            save_global_variables(vm_context.global_vars_path);
+            vm_context.save_global_vars_cb(vm_context.global_vars_path);
         }
     }
 
@@ -59,7 +67,7 @@ uint8_t load_global_variables()
     if (vm_context.global_vars_path)
     {
         VMFile file;
-        if (!vm_io_read_file(vm_context.global_vars_path, &file))
+        if (!vm.read_cb(vm_context.global_vars_path, &file))
         {
             return 0;
         }

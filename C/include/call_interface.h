@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-extern void vm_call_function(uint32_t hash);
+typedef void (*VmCall_cb)(uint32_t hash);
 
 #endif
