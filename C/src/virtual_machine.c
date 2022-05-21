@@ -2,8 +2,6 @@
 #include <wchar.h>
 #include <stdlib.h>
 
-#include "vm_io.h"
-#include "call_interface.h"
 #include "virtual_machine.h"
 
 #define STRING_BUFFER_SIZE 512
@@ -25,23 +23,6 @@ void op_printi();
 void op_prints();
 void op_printsl();
 void op_endl();
-
-uint8_t vm_load_program(const char *program_path)
-{
-    VMFile file;
-    if (!vm.read_cb(program_path, &file))
-    {
-        return 0;
-    }
-
-    vm.program_bytes = file.buffer;
-
-    // Init header field
-    vm_header_t header = *((vm_header_t *)(vm.program_bytes));
-    header_unpack(header, &(vm.header));
-
-    return 1;
-}
 
 void vm_execute()
 {

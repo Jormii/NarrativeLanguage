@@ -12,7 +12,7 @@
 #define HEADER_STACK_SIZE_MASK 0x000000FF
 
 typedef uint64_t vm_header_t;
-typedef struct Header
+typedef struct Header_st
 {
     uint16_t options_count;
     uint16_t integers_count;
@@ -27,7 +27,7 @@ void header_unpack(vm_header_t header_bytes, Header *out_header);
 #define OPTION_INSTRUCTIONS_PC_MASK 0x0000FFFF
 
 typedef uint32_t vm_option_t;
-typedef struct Option
+typedef struct Option_st
 {
     uint16_t string_pc;
     uint16_t instructions_pc;
@@ -46,7 +46,7 @@ typedef uint16_t vm_char_t;
 #define INSTRUCTION_LITERAL_MASK 0x00FFFFFF
 
 typedef uint32_t vm_instruction_t;
-typedef struct Instruction
+typedef struct Instruction_st
 {
     uint8_t op_code;
     uint32_t literal;

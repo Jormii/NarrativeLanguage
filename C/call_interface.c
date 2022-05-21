@@ -3,7 +3,6 @@
 #include <stdlib.h>
 
 #include "vm_stack.h"
-#include "call_interface.h"
 #include "virtual_machine.h"
 
 extern int32_t custom_add(int32_t a0, int32_t a1);

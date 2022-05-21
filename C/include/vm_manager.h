@@ -5,13 +5,13 @@
 #include <stdint.h>
 
 #include "vm_stack.h"
-#include "call_interface.h"
 #include "virtual_machine.h"
 
-typedef void (*VmManagerSaveProgram_cb)(const char *path);
-typedef void (*VmManagerSaveGlobalVars_cb)(const char *path);
+typedef void *(*VmReadFile)(const char *path, size_t *out_size);
+typedef void (*VmSaveProgram_cb)(const char *path);
+typedef void (*VmSaveGlobalVars_cb)(const char *path);
 
-typedef struct VMInitialization
+typedef struct VMInitialization_st
 {
     uint16_t max_options;
     uint8_t max_stack_size;
@@ -22,10 +22,10 @@ typedef struct VMInitialization
     VmCall_cb call_cb;
     VmPrint_cb print_cb;
     VmPrintOption_cb print_option_cb;
-    VmIoReadFile_cb read_cb;
 
-    VmManagerSaveProgram_cb save_program_cb;
-    VmManagerSaveGlobalVars_cb save_global_vars_cb;
+    VmReadFile read_cb;
+    VmSaveProgram_cb save_program_cb;
+    VmSaveGlobalVars_cb save_global_vars_cb;
 } VMInitialization;
 
 uint8_t vm_manager_initialize(const VMInitialization *init_values);

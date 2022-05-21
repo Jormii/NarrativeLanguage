@@ -6,7 +6,7 @@
 
 typedef size_t vm_stack_t;
 
-typedef struct VMStack
+typedef struct VMStack_st
 {
     uint8_t curr_size;
     uint8_t max_size;
