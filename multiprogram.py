@@ -8,7 +8,6 @@ from NarrativeLanguage import variables
 
 from VirtualMachine.program import Program
 from VirtualMachine.program_binary import ProgramBinary
-from VirtualMachine.c_scene_interface import SceneInterface
 from VirtualMachine.c_call_interface import create_interface
 
 from Utils.iwhere import IWhere
@@ -126,25 +125,23 @@ class MultiProgram:
     def _create_files(self, output_dir, programs, global_vars):
         print("Creating binaries...\n")
 
-        scene_interface = SceneInterface()
         vm_initialization = VMInitialization()
         for src, prgrm in zip(self.sources.values(), programs):
-            out_path = "{}.bin".format(
-                os.path.join(output_dir, src.name))
+            src_mapping = self._scene_mapping[src.name]
+            filename = str(src_mapping).zfill(8)    # 24 int literals
+            out_path = "{}.bin".format(os.path.join(output_dir, filename))
 
             binary = ProgramBinary(prgrm)
             binary.write_to_file(out_path)
-            scene_interface.add_program_scenes(prgrm)
             vm_initialization.update(prgrm)
 
-            txt_out_path = "{}_stringify.txt".format(
-                os.path.join(output_dir, src.name))
+            txt_out_path = os.path.join(
+                output_dir, "{} - {}.txt".format(filename, src.name))
             with open(txt_out_path, "w") as fd:
                 prgrm.pretty_print(fd)
 
         gv_path = os.path.join(output_dir, "global.bin")
         ProgramBinary.write_global_vars_to_file(global_vars, gv_path)
         create_interface(self.function_prototypes, output_dir)
-        scene_interface.create_interface(self.sources, output_dir)
 
         vm_initialization.write_to(output_dir)

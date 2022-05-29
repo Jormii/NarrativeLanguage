@@ -5,29 +5,16 @@ import NarrativeLanguage.variables as variables
 
 FILENAME = "call_interface"
 
-H_TEMPLATE = """
-#ifndef CALL_INTERFACE_H
-#define CALL_INTERFACE_H
-
-#include <stdint.h>
-
-#include "virtual_machine.h"
-
-void vm_call_function(VirtualMachine *vm, uint32_t hash);
-
-#endif
-"""
-
 C_TEMPLATE = """
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "stack.h"
-#include "{filename}.h"
+#include "vm_stack.h"
+#include "virtual_machine.h"
 
 {declarations}
 
-void vm_call_function(VirtualMachine *vm, uint32_t hash) {{
+void vm_call_function(uint32_t hash) {{
     switch (hash) {{
     {switch_cases_str}
     default:
@@ -79,7 +66,7 @@ class StringPointerFormatter(CallFormatter):
         return "uint16_t *{}".format(argname)
 
     def format_stackt_casting(self):
-        return ("(stack_t)")
+        return ("(vm_stack_t)")
 
 
 FORMATTERS = {
@@ -89,18 +76,13 @@ FORMATTERS = {
 
 
 def create_interface(function_prototypes: FunctionPrototypes, output_dir):
-    header = _create_header_file()
     source = _create_source_file(function_prototypes)
 
-    for payload, extension in [(header, "h"), (source, "c")]:
+    for payload, extension in [(source, "c")]:
         file_path = os.path.join(
             output_dir, "{}.{}".format(FILENAME, extension))
         with open(file_path, "w") as fd:
             fd.write(payload)
-
-
-def _create_header_file():
-    return H_TEMPLATE
 
 
 def _create_source_file(function_prototypes):
@@ -135,11 +117,11 @@ def _body_from_func_prototype(prototype):
     for i, value_type in enumerate(prototype.params_types):
         argname = "a{}".format(i)
 
-        body += "{} = stack_pop(&(vm->stack));\n".format(
+        body += "{} = vm_stack_pop(&(vm.stack));\n".format(
             FORMATTERS[value_type].format_arg(argname))
         argnames.append(argname)
 
-    call_text = "stack_push(&(vm->stack), {}{}({}));".format(
+    call_text = "vm_stack_push(&(vm.stack), {}{}({}));".format(
         FORMATTERS[prototype.return_type].format_stackt_casting(),
         prototype.identifier,
         ", ".join(argnames))
