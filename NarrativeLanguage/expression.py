@@ -16,12 +16,6 @@ class Variable:
         self.identifier_token = identifier_token
 
 
-class SceneIdentifier:
-
-    def __init__(self, identifier_token):
-        self.identifier_token = identifier_token
-
-
 class FunctionCall:
 
     def __init__(self, identifier_token, arguments):

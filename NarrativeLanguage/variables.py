@@ -41,7 +41,6 @@ INT_TYPE = ValueType("INT")
 FLOAT_TYPE = ValueType("FLOAT")
 STRING_TYPE = ValueType("STRING")
 STRING_PTR_TYPE = ValueType("STRING*")
-SCENE_IDENTIFIER_TYPE = ValueType("SCENE")
 
 
 class Value:

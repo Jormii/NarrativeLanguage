@@ -3,12 +3,12 @@ from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
 from NarrativeLanguage.visitor import Visitor
 from NarrativeLanguage.constexpr_interpreter import CONSTEXPR_INTERPRETER
-from NarrativeLanguage.function import string_16b_hash
 
 
 class VariableSolver:
 
-    def __init__(self, statements, global_variables, function_prototypes):
+    def __init__(self, scene_mapping, statements, global_variables, function_prototypes):
+        self.scene_mapping = scene_mapping
         self.statements = statements
         self.global_variables = global_variables
         self.function_prototypes = function_prototypes
@@ -23,11 +23,11 @@ class VariableSolver:
             .submit(statement.Assignment, self._solve_assignment_stmt) \
             .submit(statement.Block, self._solve_block_stmt) \
             .submit(statement.Condition, self._solve_condition_stmt) \
-            .submit(statement.Option, self._solve_option_stmt)
+            .submit(statement.Option, self._solve_option_stmt) \
+            .submit(statement.SceneSwitch, self._solve_scene_switch_stmt)
         self._solver.submit(expression.Parenthesis, self._solve_parenthesis_expr) \
             .submit(expression.Literal, self._solve_literal_expr) \
             .submit(expression.Variable, self._solve_variable_expr) \
-            .submit(expression.SceneIdentifier, self._solve_scene_identifier_expr) \
             .submit(expression.FunctionCall, self._solve_function_call_expr) \
             .submit(expression.Unary, self._solve_unary_expr) \
             .submit(expression.Binary, self._solve_binary_expr)
@@ -119,9 +119,6 @@ class VariableSolver:
         assert value.value_type not in [variables.STRING_TYPE, variables.STRING_PTR_TYPE], \
             "Can't store strings"
 
-        assert value.value_type != variables.SCENE_IDENTIFIER_TYPE, \
-            "Can't store scene identifiers"
-
         if self.is_defined(identifier):
             variable = self.read(identifier)
             assert value.value_type == variable.value.value_type, \
@@ -153,6 +150,11 @@ class VariableSolver:
 
         self._solver.visit(stmt.block_stmt)
 
+    def _solve_scene_switch_stmt(self, stmt):
+        identifier = identifier_from_token(stmt.scene_identifier_token)
+        assert identifier.name in self.scene_mapping, \
+            "Unknown scene '{}'".format(identifier)
+
     # endregion
 
     # region Expressions
@@ -177,9 +179,6 @@ class VariableSolver:
 
         variable = self.read(identifier)
         return variable.value
-
-    def _solve_scene_identifier_expr(self, expr):
-        return scene_value_from_token(expr.identifier_token)
 
     def _solve_function_call_expr(self, expr):
         identifier = identifier_from_token(expr.identifier_token)
@@ -242,9 +241,3 @@ def anonymous_identifier(value):
 
     name = "+{}".format(value.literal)
     return variables.Identifier(name)
-
-
-def scene_value_from_token(token):
-    identifier = identifier_from_token(token)
-    hash = string_16b_hash(identifier.name)
-    return variables.Value(variables.SCENE_IDENTIFIER_TYPE, hash)

@@ -84,8 +84,7 @@ class StringPointerFormatter(CallFormatter):
 
 FORMATTERS = {
     variables.INT_TYPE: IntFormatter(),
-    variables.STRING_PTR_TYPE: StringPointerFormatter(),
-    variables.SCENE_IDENTIFIER_TYPE: IntFormatter()
+    variables.STRING_PTR_TYPE: StringPointerFormatter()
 }
 
 

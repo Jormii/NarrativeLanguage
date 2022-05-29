@@ -49,6 +49,10 @@ class MultiProgram:
         self.sources = sources
         self.function_prototypes = function_prototypes
 
+        self._scene_mapping = {}
+        for i, name in enumerate(self.sources):
+            self._scene_mapping[name] = i
+
     def compile(self, output_dir):
         # Check and create output dir
         if not os.path.exists(output_dir):
@@ -93,7 +97,7 @@ class MultiProgram:
         global_vars = variables.Variables()
 
         for statements in sources_statements:
-            solver = VariableSolver(statements, global_vars,
+            solver = VariableSolver(self._scene_mapping, statements, global_vars,
                                     self.function_prototypes)
             solver.solve()
             solvers.append(solver)
@@ -142,5 +146,5 @@ class MultiProgram:
         ProgramBinary.write_global_vars_to_file(global_vars, gv_path)
         create_interface(self.function_prototypes, output_dir)
         scene_interface.create_interface(self.sources, output_dir)
-        
+
         vm_initialization.write_to(output_dir)

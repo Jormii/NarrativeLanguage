@@ -234,11 +234,11 @@ class Program:
             .submit(statement.Assignment, self._transpile_assignment_stmt) \
             .submit(statement.Block, self._transpile_block_stmt) \
             .submit(statement.Condition, self._transpile_condition_stmt) \
-            .submit(statement.Option, self._transpile_option_stmt)
+            .submit(statement.Option, self._transpile_option_stmt) \
+            .submit(statement.SceneSwitch, self._transpile_scene_switch_stmt)
         self._transpiler.submit(expression.Parenthesis, self._transpile_parenthesis_expr) \
             .submit(expression.Literal, self._transpile_literal_expr) \
             .submit(expression.Variable, self._transpile_variable_expr) \
-            .submit(expression.SceneIdentifier, self._transpile_scene_identifier_expr) \
             .submit(expression.FunctionCall, self._transpile_function_call_expr) \
             .submit(expression.Unary, self._transpile_unary_expr) \
             .submit(expression.Binary, self._transpile_binary_expr)
@@ -295,8 +295,7 @@ class Program:
                 else:
                     mapping = {
                         variables.INT_TYPE: inst.OpCode.PRINTI,
-                        variables.STRING_PTR_TYPE: inst.OpCode.PRINTS,
-                        variables.SCENE_IDENTIFIER_TYPE: inst.OpCode.PRINTI
+                        variables.STRING_PTR_TYPE: inst.OpCode.PRINTS
                     }
 
                     expr = field.expression()
@@ -484,6 +483,13 @@ class Program:
         self._add_instructions(
             inst.LiteralInstruction(inst.OpCode.DISPLAY, index))
 
+    def _transpile_scene_switch_stmt(self, stmt):
+        identifier = vs.identifier_from_token(stmt.scene_identifier_token)
+        index = self.solver.scene_mapping[identifier.name]
+
+        self._add_instructions(
+            inst.LiteralInstruction(inst.OpCode.SWITCH, index))
+
     # endregion
 
     # region Expressions
@@ -508,6 +514,7 @@ class Program:
             self.offsets.wrap_instruction(op_code, identifier))
 
     def _transpile_scene_identifier_expr(self, expr):
+        # TODO: Check this
         identifier = vs.identifier_from_token(expr.identifier_token)
         value = vs.scene_value_from_token(expr.identifier_token)
 
