@@ -24,14 +24,7 @@ uint8_t load_program(const char *program_path);
 
 const char *vm_manager_curr_program()
 {
-    if (vm_context.program_loaded)
-    {
-        return vm_context.program_path;
-    }
-    else
-    {
-        return "";
-    }
+    return vm_context.program_path;
 }
 
 uint8_t vm_manager_initialize(const VMInitialization *init_values)
