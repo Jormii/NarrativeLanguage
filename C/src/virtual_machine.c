@@ -2,13 +2,14 @@
 #include <wchar.h>
 #include <stdlib.h>
 
+#include "vm_manager.h"
 #include "virtual_machine.h"
 
 #define STRING_BUFFER_SIZE 512
 wchar_t print_buffer[STRING_BUFFER_SIZE + 1];
 wchar_t aux_buffer[STRING_BUFFER_SIZE + 1];
 
-void vm_execute_pc(uint32_t pc);
+uint8_t vm_execute_pc(uint32_t pc);
 void vm_instruction_decode();
 void op_print();
 void op_read();
@@ -24,15 +25,10 @@ void op_prints();
 void op_printsl();
 void op_endl();
 
-void vm_execute()
+uint8_t vm_execute()
 {
     vm_stack_clear(&(vm.stack)); // TODO: Probably unnecessary
-    for (uint16_t i = 0; i < vm.header.options_count; ++i)
-    {
-        vm.visible_options[i] = 0;
-    }
-
-    vm_execute_pc(0);
+    return vm_execute_pc(0);
 }
 
 void vm_display_options()
@@ -54,7 +50,22 @@ void vm_display_options()
     }
 }
 
-void vm_execute_pc(uint32_t pc)
+uint8_t vm_execute_option(uint16_t index)
+{
+    if (!vm.visible_options[index])
+    {
+        return 0;
+    }
+
+    vm_option_t *base_ptr = (vm_option_t *)(vm.program_bytes + sizeof(vm_header_t));
+    vm_option_t option_bytes = *(base_ptr + index);
+
+    Option option;
+    option_unpack(option_bytes, &option);
+    return vm_execute_pc(option.instructions_pc);
+}
+
+uint8_t vm_execute_pc(uint32_t pc)
 {
     vm.executing = 1;
     vm.pc = pc;
@@ -89,6 +100,20 @@ void vm_execute_pc(uint32_t pc)
         case DISPLAY:
             vm.visible_options[vm.inst.literal] = 1;
             break;
+        case SWITCH:
+        {
+            uint8_t success = vm_manager_load_program(vm.inst.literal);
+            if (!success)
+            {
+                size_t error_len = 512;
+                wchar_t *buffer = malloc(error_len * sizeof(wchar_t));
+                swprintf(buffer, error_len,
+                         L"Error in program \"%s\": Couldn't load scene %u\n",
+                         vm_manager_curr_program(), vm.inst.literal);
+            }
+
+            return 1;
+        }
         case READ:
             op_read();
             break;
@@ -174,12 +199,14 @@ void vm_execute_pc(uint32_t pc)
             break;
         default:
             // TODO: Implement some way of redirecting errors
-            printf("Unknown OpCode %u\n", vm.inst.op_code);
+            fprintf(stderr, "Unknown OpCode %u\n", vm.inst.op_code);
             exit(1);
         }
 
         vm.pc += 1;
     }
+
+    return 0;
 }
 
 void vm_instruction_decode()

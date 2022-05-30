@@ -10,6 +10,7 @@ class OpCode(Enum):
     PRINTSL = auto()    # Prints string variable. Offset is instruction's literal
     ENDL = auto()
     DISPLAY = auto()
+    SWITCH = auto()     # Loads a new scene
     READ = auto()
     WRITE = auto()
     READG = auto()      # Read global
@@ -47,6 +48,7 @@ STACK_MODIFICATION = {
     OpCode.PRINTSL: 0,
     OpCode.ENDL: 0,
     OpCode.DISPLAY: 0,
+    OpCode.SWITCH: 0,
     OpCode.READ: 1,
     OpCode.WRITE: -1,
     OpCode.READG: 1,

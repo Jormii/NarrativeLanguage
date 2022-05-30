@@ -56,3 +56,9 @@ class Option:
     def __init__(self, string_token, block_stmt):
         self.string_token = string_token
         self.block_stmt = block_stmt
+
+
+class SceneSwitch:
+
+    def __init__(self, scene_identifier_token):
+        self.scene_identifier_token = scene_identifier_token

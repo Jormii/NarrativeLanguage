@@ -167,10 +167,6 @@ def _constexpr_variable(expr):
     exit("Reading variables is not constexpr")
 
 
-def _constexpr_scene_identifier(expr):
-    raise NotImplementedError()
-
-
 def _constexpr_function_call(expr):
     exit("Function calls are not constexpr")
 
@@ -189,7 +185,6 @@ def _constexpr_binary(expr):
 CONSTEXPR_INTERPRETER.submit(expression.Parenthesis, _constexpr_parenthesis) \
     .submit(expression.Literal, _constexpr_literal) \
     .submit(expression.Variable, _constexpr_variable) \
-    .submit(expression.SceneIdentifier, _constexpr_scene_identifier) \
     .submit(expression.FunctionCall, _constexpr_function_call) \
     .submit(expression.Unary, _constexpr_unary) \
     .submit(expression.Binary, _constexpr_binary)

@@ -12,14 +12,14 @@ void vm_call_function(uint32_t hash)
 {
     switch (hash)
     {
-    case 2477614:
+    case 52782:
     {
         int32_t a0 = vm_stack_pop(&(vm.stack));
         int32_t a1 = vm_stack_pop(&(vm.stack));
         vm_stack_push(&(vm.stack), custom_add(a0, a1));
     }
     break;
-    case 4639984:
+    case 52464:
     {
         vm_stack_push(&(vm.stack), (vm_stack_t)name());
     }

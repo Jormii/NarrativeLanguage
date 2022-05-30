@@ -97,6 +97,8 @@ class Parser:
             return self._store_variable()
         elif self._tt.match(TokenType.IF):
             return self._condition()
+        elif self._tt.match(TokenType.LEFT_SQR_BRACKET):
+            return self._scene_switch()
 
         return self._expression_statement()
 
@@ -242,6 +244,28 @@ class Parser:
             else_block
         )
 
+    def _scene_switch(self):
+        # FORMAT
+        # '[[' STRING ']]'
+
+        for _ in range(2):
+            assert self._tt.match_and_if_so_advance(TokenType.LEFT_SQR_BRACKET), \
+                "Expected '[['"
+
+        scene_identifier_token = Token.empty()
+        assert self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, scene_identifier_token), \
+            "Expected IDENTIFIER"
+
+        for _ in range(2):
+            assert self._tt.match_and_if_so_advance(TokenType.RIGHT_SQR_BRACKET), \
+                "Expected ']]'"
+
+        # Consume ";"
+        assert self._tt.match_and_if_so_advance(TokenType.SEMICOLON), \
+            "Expected ';'"
+
+        return statement.SceneSwitch(scene_identifier_token)
+
     def _expression_statement(self):
         expr_stmt = statement.Expression(self._expression())
         assert self._tt.match_and_if_so_advance(TokenType.SEMICOLON), \
@@ -367,19 +391,6 @@ class Parser:
                 return expression.FunctionCall(identifier_token, arguments)
 
             return expression.Variable(identifier_token)
-
-        # Scene identifier
-        if self._tt.match_and_if_so_advance(TokenType.LEFT_SQR_BRACKET) and \
-                self._tt.match_and_if_so_advance(TokenType.LEFT_SQR_BRACKET):
-            identifier_token = Token.empty()
-            assert self._tt.match_and_if_so_advance(TokenType.IDENTIFIER, identifier_token), \
-                "Expected identifier afer '[['"
-
-            for _ in range(2):
-                assert self._tt.match_and_if_so_advance(TokenType.RIGHT_SQR_BRACKET), \
-                    "Expected ']]' afer scene identifier"
-
-            return expression.SceneIdentifier(identifier_token)
 
         # Notify error
         raise Exception("Cannot parse expression")

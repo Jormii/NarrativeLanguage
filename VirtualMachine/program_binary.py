@@ -55,6 +55,7 @@ class ProgramBinary:
 
     @staticmethod
     def write_global_vars_to_file(global_vars, path):
+        # TODO: Write max options and stack size
         with open(path, "wb") as fd:
             for i, variable in enumerate(global_vars.variables.values()):
                 assert i == variable.index
