@@ -33,7 +33,8 @@ struct
     VmPrintOption_cb print_option_cb;
 } vm;
 
-void vm_execute();
+uint8_t vm_execute();
 void vm_display_options();
+uint8_t vm_execute_option(uint16_t index);
 
 #endif

@@ -1,15 +1,18 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "vm_manager.h"
 #include "virtual_machine.h"
 
+#define PROGRAM_PATH_LENGTH 128
+
 struct
 {
     uint8_t program_loaded;
     const char *binaries_dir;
     const char *global_vars_path;
-    char program_path[128]; // Program being executed
+    char program_path[PROGRAM_PATH_LENGTH]; // Program being executed
 
     VmReadFile read_cb;
     VmSaveProgram_cb save_program_cb;
@@ -18,6 +21,18 @@ struct
 
 uint8_t load_global_variables();
 uint8_t load_program(const char *program_path);
+
+const char *vm_manager_curr_program()
+{
+    if (vm_context.program_loaded)
+    {
+        return vm_context.program_path;
+    }
+    else
+    {
+        return "";
+    }
+}
 
 uint8_t vm_manager_initialize(const VMInitialization *init_values)
 {
@@ -42,7 +57,7 @@ uint8_t vm_manager_initialize(const VMInitialization *init_values)
     return 1;
 }
 
-uint8_t vm_manager_load_program(const char *program_filename)
+uint8_t vm_manager_load_program(uint32_t scene_id)
 {
     if (vm_context.program_loaded)
     {
@@ -55,8 +70,11 @@ uint8_t vm_manager_load_program(const char *program_filename)
         }
     }
 
+    // Identifiers use u24 numbers => 8 padding
     strcpy(vm_context.program_path, vm_context.binaries_dir);
-    strcat(vm_context.program_path, program_filename);
+    snprintf(vm_context.program_path, PROGRAM_PATH_LENGTH,
+             "%s%08u.bin", vm_context.binaries_dir, scene_id);
+
     uint8_t success = load_program(vm_context.program_path);
     vm_context.program_loaded = success;
 
@@ -100,6 +118,12 @@ uint8_t load_program(const char *program_path)
     // Init header field
     vm_header_t header = *((vm_header_t *)(vm.program_bytes));
     header_unpack(header, &(vm.header));
+
+    // Set all options as invisible
+    for (uint16_t i = 0; i < vm.header.options_count; ++i)
+    {
+        vm.visible_options[i] = 0;
+    }
 
     return 1;
 }

@@ -28,7 +28,8 @@ typedef struct VMInitialization_st
     VmSaveGlobalVars_cb save_global_vars_cb;
 } VMInitialization;
 
+const char *vm_manager_curr_program();
 uint8_t vm_manager_initialize(const VMInitialization *init_values);
-uint8_t vm_manager_load_program(const char *program_filename);
+uint8_t vm_manager_load_program(uint32_t scene_id);
 
 #endif

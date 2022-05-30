@@ -9,6 +9,28 @@
 #include "vm_manager.h"
 #include "virtual_machine.h"
 
+uint16_t ask_for_option()
+{
+    uint16_t limit = vm.header.options_count;
+    uint16_t chosen = limit;
+    while (chosen >= limit || !vm.visible_options[chosen])
+    {
+        int ichosen;
+        scanf("%d", &ichosen);
+
+        if (ichosen < 0)
+        {
+            chosen = limit;
+        }
+        else
+        {
+            chosen = (uint16_t)ichosen;
+        }
+    }
+
+    return chosen;
+}
+
 int main()
 {
     VMInitialization init_values = {
@@ -30,15 +52,26 @@ int main()
         return 1;
     }
 
-    const char *program_filename = "Escena.bin";
-    if (!vm_manager_load_program(program_filename))
+    uint32_t scene_id = 0;
+    if (!vm_manager_load_program(scene_id))
     {
         printf("Couldn't load program\n");
         return 1;
     }
 
-    vm_execute();
-    vm_display_options();
+    uint8_t scene_switched = 1;
+    while (1)
+    {
+        scene_switched = vm_execute();
+        if (!scene_switched)
+        {
+            printf("\n");
+
+            vm_display_options();
+            uint16_t chosen = ask_for_option();
+            vm_execute_option(chosen);
+        }
+    }
 
     return 0;
 }

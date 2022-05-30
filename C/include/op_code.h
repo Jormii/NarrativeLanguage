@@ -11,6 +11,7 @@ typedef enum OpCode_en
     PRINTSL,
     ENDL,
     DISPLAY,
+    SWITCH,
     READ,
     WRITE,
     READG,
