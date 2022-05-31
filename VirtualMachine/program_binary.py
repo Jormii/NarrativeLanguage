@@ -1,6 +1,6 @@
 import os
 
-from NarrativeLanguage.variables import VariableScope
+import numpy as np
 
 import VirtualMachine.types as types
 from VirtualMachine.program import Program
@@ -26,6 +26,17 @@ class ProgramBinary:
             instructions_offset = self.program.offsets.offset
             stack_size = self.program.max_stack_size
 
+            # Check if instructions need padding
+            padding = 0
+            inst_size = types.InstructionField(0, 0).size_in_bytes()
+            offset_mod = instructions_offset % inst_size
+            if offset_mod != 0:
+                padding = inst_size - offset_mod
+
+            instructions_offset += padding
+            assert instructions_offset % inst_size == 0
+
+            # Write bytes
             header = types.HeaderField(
                 options_count, integers_count, instructions_offset, stack_size)
             out_f.write(header.to_bytes())
@@ -43,6 +54,10 @@ class ProgramBinary:
                 cb = types.VALUE_TYPE_CALLBACKS[variable.value.value_type]
                 variable_field = cb(variable)
                 out_f.write(variable_field.to_bytes())
+
+            # Write padding
+            for _ in range(padding):
+                out_f.write(np.uint8(0).tobytes())
 
             # Instructions
             for instruction in self.program.instructions:
