@@ -6,8 +6,7 @@
 #include "virtual_machine.h"
 
 #define STRING_BUFFER_SIZE 512
-wchar_t print_buffer[STRING_BUFFER_SIZE + 1];
-wchar_t aux_buffer[STRING_BUFFER_SIZE + 1];
+wchar_t print_buffer[STRING_BUFFER_SIZE];
 
 uint8_t vm_execute_pc(uint32_t pc);
 void vm_instruction_decode();
@@ -19,7 +18,8 @@ void op_writeg();
 void op_unary();
 void op_binary();
 
-void format_string(uint32_t pc);
+void format_string(uint32_t pc, uint8_t is_option);
+void reset_print_buffer();
 void op_printi();
 void op_prints();
 void op_printsl();
@@ -45,8 +45,8 @@ void vm_display_options()
         vm_option_t option_bytes = *(base_ptr + i);
         option_unpack(option_bytes, &option);
 
-        format_string(option.string_pc);
-        vm.print_option_cb(i, print_buffer);
+        vm.option_start_cb(i);
+        format_string(option.string_pc, 1);
     }
 }
 
@@ -222,8 +222,7 @@ void op_print()
 {
     uint32_t old_pc = vm.pc;
 
-    format_string(vm.inst.literal);
-    vm.print_cb(print_buffer);
+    format_string(vm.inst.literal, 0);
 
     vm.executing = 1;
     vm.pc = old_pc;
@@ -264,45 +263,59 @@ void op_binary()
     vm.v2 = vm_stack_pop(&(vm.stack));
 }
 
-void format_string(uint32_t pc)
+void format_string(uint32_t pc, uint8_t is_option)
 {
-    // Set first bits to '\0'
-    print_buffer[0] = '\0';
-    aux_buffer[0] = '\0';
-
+    vm.formatting_option = is_option;
     vm_execute_pc(pc);
+}
+
+void reset_print_buffer()
+{
+    for (size_t i = 0; i < STRING_BUFFER_SIZE; ++i)
+    {
+        print_buffer[i] = '\0';
+    }
 }
 
 void op_printi()
 {
     int32_t value = vm_stack_pop(&(vm.stack));
-    swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%d", value);
-    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
+
+    reset_print_buffer();
+    swprintf(print_buffer, STRING_BUFFER_SIZE, L"%d", value);
+    vm.print_cb(print_buffer, vm.formatting_option);
 }
 
 void op_prints()
 {
     wchar_t *str_ptr = (wchar_t *)vm_stack_pop(&(vm.stack));
-    swprintf(aux_buffer, STRING_BUFFER_SIZE, L"%ls", str_ptr);
-    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
+    if (str_ptr != NULL)
+    {
+        reset_print_buffer();
+        swprintf(print_buffer, STRING_BUFFER_SIZE, L"%ls", str_ptr);
+        vm.print_cb(print_buffer, vm.formatting_option);
+    }
 }
 
 void op_printsl()
 {
-    // Copy content to aux buffer
+    reset_print_buffer();
+
+    // Copy content to buffer
     uint32_t i = 0;
     uint16_t *str_ptr = (uint16_t *)(vm.program_bytes + vm.inst.literal);
-    while (str_ptr[i] != '\0')
+    while (str_ptr[i] != '\0' && i < STRING_BUFFER_SIZE)
     {
-        aux_buffer[i] = str_ptr[i];
+        print_buffer[i] = str_ptr[i];
         i += 1;
     }
-    aux_buffer[i] = '\0';
+    print_buffer[i] = '\0';
 
-    wcsncat(print_buffer, aux_buffer, STRING_BUFFER_SIZE);
+    vm.print_cb(print_buffer, vm.formatting_option);
 }
 
 void op_endl()
 {
     vm.executing = 0;
+    vm.end_of_string_cb(vm.formatting_option);
 }

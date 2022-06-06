@@ -6,6 +6,7 @@ import NarrativeLanguage.variables as variables
 class Function:
 
     def __init__(self, name, return_type, params_types):
+        self.called = False
         self.identifier = variables.Identifier(name)
         self.return_type = return_type
         self.params_types = params_types

@@ -41,7 +41,8 @@ int main()
 
         .call_cb = call_cb,
         .print_cb = print_cb,
-        .print_option_cb = print_option_cb,
+        .end_of_string_cb = end_of_string_cb,
+        .option_start_cb = option_start_cb,
         .read_cb = read_file_cb,
         .save_program_cb = save_program_cb,
         .save_global_vars_cb = save_global_vars_cb};

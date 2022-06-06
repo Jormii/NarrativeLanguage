@@ -14,9 +14,9 @@ struct
     const char *global_vars_path;
     char program_path[PROGRAM_PATH_LENGTH]; // Program being executed
 
-    VmReadFile read_cb;
-    VmSaveProgram_cb save_program_cb;
-    VmSaveGlobalVars_cb save_global_vars_cb;
+    VmReadFile_fp read_cb;
+    VmSaveProgram_fp save_program_cb;
+    VmSaveGlobalVars_fp save_global_vars_cb;
 } vm_context;
 
 uint8_t load_global_variables();
@@ -35,7 +35,8 @@ uint8_t vm_manager_initialize(const VMInitialization *init_values)
 
     vm.call_cb = init_values->call_cb;
     vm.print_cb = init_values->print_cb;
-    vm.print_option_cb = init_values->print_option_cb;
+    vm.end_of_string_cb = init_values->end_of_string_cb;
+    vm.option_start_cb = init_values->option_start_cb;
     vm_context.read_cb = init_values->read_cb;
     vm_context.save_program_cb = init_values->save_program_cb;
     vm_context.save_global_vars_cb = init_values->save_global_vars_cb;

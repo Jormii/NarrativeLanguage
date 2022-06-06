@@ -7,9 +7,9 @@
 #include "vm_stack.h"
 #include "virtual_machine.h"
 
-typedef void *(*VmReadFile)(const char *path, size_t *out_size);
-typedef void (*VmSaveProgram_cb)(const char *path);
-typedef void (*VmSaveGlobalVars_cb)(const char *path);
+typedef void *(*VmReadFile_fp)(const char *path, size_t *out_size);
+typedef void (*VmSaveProgram_fp)(const char *path);
+typedef void (*VmSaveGlobalVars_fp)(const char *path);
 
 typedef struct VMInitialization_st
 {
@@ -19,13 +19,14 @@ typedef struct VMInitialization_st
     const char *global_vars_path;
 
     // Callbacks
-    VmCall_cb call_cb;
-    VmPrint_cb print_cb;
-    VmPrintOption_cb print_option_cb;
+    VmCall_fp call_cb;
+    VmPrint_fp print_cb;
+    VmEndOfString_fp end_of_string_cb;
+    VmOptionStart_fp option_start_cb;
 
-    VmReadFile read_cb;
-    VmSaveProgram_cb save_program_cb;
-    VmSaveGlobalVars_cb save_global_vars_cb;
+    VmReadFile_fp read_cb;
+    VmSaveProgram_fp save_program_cb;
+    VmSaveGlobalVars_fp save_global_vars_cb;
 } VMInitialization;
 
 const char *vm_manager_curr_program();

@@ -12,14 +12,26 @@ void call_cb(uint32_t hash)
     vm_call_function(hash);
 }
 
-void print_cb(const wchar_t *string)
+void print_cb(const wchar_t *string, uint8_t is_option)
 {
-    wprintf(L"%ls\n", string);
+    wprintf(L"%ls", string);
 }
 
-void print_option_cb(uint16_t index, const wchar_t *string)
+void end_of_string_cb(uint8_t is_option)
 {
-    wprintf(L"%u: %ls\n", index, string);
+    if (is_option)
+    {
+        wprintf(L"\n");
+    }
+    else
+    {
+        wprintf(L"\n\n");
+    }
+}
+
+void option_start_cb(uint16_t index)
+{
+    wprintf(L"%u: ", index);
 }
 
 void *read_file_cb(const char *path, size_t *out_size)

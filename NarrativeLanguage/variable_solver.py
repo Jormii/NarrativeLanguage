@@ -193,6 +193,8 @@ class VariableSolver:
         assert prototype.compatible_args(args), \
             "Provided arguments aren't compatible with function {}. Provided: {}".format(
                 prototype, args)
+            
+        prototype.called = True
 
         return variables.Value(prototype.return_type, 0)
 

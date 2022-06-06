@@ -89,6 +89,9 @@ def _create_source_file(function_prototypes):
     declarations = ""
     switch_cases = ""
     for prototype in function_prototypes.functions.values():
+        if not prototype.called:
+            continue
+
         declarations += _declaration_from_func_prototype(prototype)
         switch_cases += SWITCH_CASE_TEMPLATE.format(
             hash=prototype.hash,
