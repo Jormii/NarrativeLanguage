@@ -192,21 +192,34 @@ class Offsets:
         self.used_variables.add(identifier)
         return Offsets.OffsetInstruction(op_code, identifier, self)
 
-    def count_integers(self, solver: vs.VariableSolver):
-        n_ints = 0
+    def count_store_integers(self, solver: vs.VariableSolver):
+        n_store_ints = 0
         for identifier in self.used_variables:
             variable = solver.read(identifier)
-            if variable.value.value_type == variables.INT_TYPE:
-                n_ints += 1
+            value = variable.value
+            if value.value_type == variables.INT_TYPE and variable.scope == variables.VariableScope.STORE:
+                n_store_ints += 1
 
-        return n_ints
+        return n_store_ints
 
 
 class Option:
 
+    class OptionInstruction(YieldInstruction):
+
+        def __init__(self, option, program):
+            super().__init__(inst.OpCode.DISPLAY, option.string_identifier)
+
+            self.option = option
+            self.program = program
+
+        def unwrap(self):
+            return inst.LiteralInstruction(self.op_code, self.option.index)
+
     def __init__(self, string_identifier, block_stmt):
         self.string_identifier = string_identifier
         self.block_stmt = block_stmt
+        self.index = None
         self.pc = None
         self.string_pc = None
 
@@ -223,6 +236,7 @@ class Program:
         self.offsets = Offsets(self.solver)
         self.compound_strings = self._initialize_strings()
         self.options = []
+        self.option_index = 0   # Used to assign indices to options
         self.scenes = {}
 
         self._transpiler = Visitor()
@@ -263,7 +277,8 @@ class Program:
                 identifier = vs.anonymous_identifier(value)
                 if not self.solver.is_defined(identifier):
                     self.solver.define(
-                        variables.VariableScope.TEMPORAL, identifier, value)
+                        variables.VariableScope.TEMPORAL, identifier, value,
+                        variable.line_declaration)
 
         return strings
 
@@ -277,8 +292,10 @@ class Program:
         i = 0
         while i < len(self.options):
             option = self.options[i]
+            option.index = i
             option.pc = len(self.instructions)
 
+            self.option_index = i
             self._transpiler.visit(option.block_stmt)
             self._add_instructions(inst.NoLiteralInstruction(inst.OpCode.EOX))
 
@@ -417,10 +434,19 @@ class Program:
         # -- STACK --
         # Value to write
 
-        self._transpiler.visit(stmt.assignment_expr)
+        token = stmt.identifier_token
+        line_declaration = (token.line, token.column)
 
         identifier = vs.identifier_from_token(stmt.identifier_token)
         variable = self.solver.read(identifier)
+        if variable.scope == variables.VariableScope.TEMPORAL and variable.value.literal != None and \
+                variable.line_declaration == line_declaration:
+            # Means this temporal value has constant value and this is where it was
+            # first declared, therefore there's no need to transpile the statement
+            return
+        else:
+            self._transpiler.visit(stmt.assignment_expr)
+
         if variable.scope in [variables.VariableScope.GLOBAL_DECLARE,
                               variables.VariableScope.GLOBAL_DEFINE]:
             op_code = inst.OpCode.WRITEG
@@ -476,12 +502,14 @@ class Program:
         value = vs.value_from_token(stmt.string_token)
         identifier = vs.anonymous_identifier(value)
 
-        index = len(self.options)
         option = Option(identifier, stmt.block_stmt)
+        if self.option_index == -1:
+            self.options.append(option)
+        else:
+            self.options.insert(self.option_index + 1, option)
+            self.option_index += 1
 
-        self.options.append(option)
-        self._add_instructions(
-            inst.LiteralInstruction(inst.OpCode.DISPLAY, index))
+        self._add_instructions(Option.OptionInstruction(option, self))
 
     def _transpile_scene_switch_stmt(self, stmt):
         identifier = vs.identifier_from_token(stmt.scene_identifier_token)

@@ -62,11 +62,12 @@ class VariableScope(Enum):
 
 class Variable:
 
-    def __init__(self, scope, identifier, value, index):
+    def __init__(self, scope, identifier, value, index, line_declaration):
         self.scope = scope
         self.identifier = identifier
         self.value = value
         self.index = index
+        self.line_declaration = line_declaration
 
     def __repr__(self):
         return "_{}_ {} = {}".format(
@@ -81,9 +82,15 @@ class Variables:
     def is_defined(self, identifier):
         return identifier in self.variables
 
-    def define(self, scope, identifier, value):
-        variable = Variable(scope, identifier, value, len(self.variables))
+    def define(self, scope, identifier, value, line_declaration):
+        variable = Variable(scope, identifier, value, len(
+            self.variables), line_declaration)
         self.variables[identifier] = variable
 
     def read(self, identifier):
         return self.variables[identifier]
+
+    def sort(self):
+        in_order = sorted(self.variables.items(),
+                          key=lambda e: e[1].scope.value)
+        self.variables = dict(in_order)

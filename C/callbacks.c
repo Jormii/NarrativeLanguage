@@ -60,7 +60,7 @@ void save_program_cb(const char *path)
 
     FILE *fd = fopen(path, "rb+");
     fseek(fd, offset, SEEK_CUR);
-    fwrite(ints_ptr, sizeof(vm_int_t), vm.header.integers_count, fd);
+    fwrite(ints_ptr, sizeof(vm_int_t), vm.header.store_integers_count, fd);
     fclose(fd);
 }
 

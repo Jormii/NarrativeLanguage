@@ -3,6 +3,7 @@ import os
 import numpy as np
 
 import VirtualMachine.types as types
+from NarrativeLanguage import variables
 from VirtualMachine.program import Program
 
 
@@ -21,7 +22,7 @@ class ProgramBinary:
         with open(path, "wb") as out_f:
             # Header
             options_count = len(self.program.options)
-            integers_count = self.program.offsets.count_integers(
+            store_integers_count = self.program.offsets.count_store_integers(
                 self.program.solver)
             instructions_offset = self.program.offsets.offset
             stack_size = self.program.max_stack_size
@@ -38,7 +39,7 @@ class ProgramBinary:
 
             # Write bytes
             header = types.HeaderField(
-                options_count, integers_count, instructions_offset, stack_size)
+                options_count, store_integers_count, instructions_offset, stack_size)
             out_f.write(header.to_bytes())
 
             # Options

@@ -27,14 +27,14 @@ class HeaderField(VmField):
     # Two uint32
     # First uint: Variables data
     # - Bits [31-16]: Options count
-    # - Bits [15-0]: Integers count
+    # - Bits [15-0]: STORE integers count
     # Second uint: Instructions data
     # - Bits [31-8]: Instructions offset
     # - Bits [7-0]: Stack size
 
-    def __init__(self, options_count, integers_count, instructions_offset, stack_size):
+    def __init__(self, options_count, store_integers_count, instructions_offset, stack_size):
         self.options_count = options_count
-        self.integers_count = integers_count
+        self.store_integers_count = store_integers_count
         self.instructions_offset = instructions_offset
         self.stack_size = stack_size
 
@@ -42,7 +42,7 @@ class HeaderField(VmField):
 
     def _can_be_represented(self):
         return can_be_represented_unsigned(self.options_count, 16) and \
-            can_be_represented_unsigned(self.integers_count, 16) and \
+            can_be_represented_unsigned(self.store_integers_count, 16) and \
             can_be_represented_unsigned(self.instructions_offset, 24) and \
             can_be_represented_unsigned(self.stack_size, 8)
 
@@ -52,19 +52,19 @@ class HeaderField(VmField):
     def to_bytes(self):
         # First half
         options_count = self.options_count << 48
-        integers_count = self.integers_count << 32
+        store_integers_count = self.store_integers_count << 32
 
         # Second half
         instructions_offset = self.instructions_offset << 8
         stack_size = self.stack_size
 
         c = self.numpy_class()
-        n = options_count + integers_count + instructions_offset + stack_size
+        n = options_count + store_integers_count + instructions_offset + stack_size
         return c(n).tobytes()
 
     def __repr__(self):
         return "HEADER {}, {}, {}, {}".format(
-            self.options_count, self.integers_count,
+            self.options_count, self.store_integers_count,
             self.instructions_offset, self.stack_size)
 
     @staticmethod
@@ -204,6 +204,9 @@ def can_be_represented_unsigned(number, n_bits):
 
 def _int_from_variable(variable):
     literal = variable.value.literal
+    if literal is None:
+        literal = 0
+
     return IntField(literal)
 
 
