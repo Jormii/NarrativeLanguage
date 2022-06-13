@@ -4,7 +4,23 @@ from NarrativeLanguage.token import TokenType
 from NarrativeLanguage.visitor import Visitor
 
 
-CONSTEXPR_INTERPRETER = Visitor()
+class ConstExprInterpreter(Visitor):
+
+    def __init__(self):
+        super().__init__()
+
+        self.solver = None
+
+
+class NotConstExprException(Exception):
+
+    def __init__(self, msg):
+        super().__init__()
+
+        self.msg = msg
+
+
+CONSTEXPR_INTERPRETER = ConstExprInterpreter()
 
 
 class Operator:
@@ -168,7 +184,7 @@ def _constexpr_variable(expr):
 
 
 def _constexpr_function_call(expr):
-    exit("Function calls are not constexpr")
+    raise NotConstExprException("Function calls are not constexpr")
 
 
 def _constexpr_unary(expr):

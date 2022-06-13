@@ -2,7 +2,7 @@ import NarrativeLanguage.variables as variables
 from NarrativeLanguage.token import TokenType
 from NarrativeLanguage import expression, statement
 from NarrativeLanguage.visitor import Visitor
-from NarrativeLanguage.constexpr_interpreter import CONSTEXPR_INTERPRETER
+from NarrativeLanguage.constexpr_interpreter import CONSTEXPR_INTERPRETER, NotConstExprException
 
 
 class VariableSolver:
@@ -32,15 +32,19 @@ class VariableSolver:
             .submit(expression.Unary, self._solve_unary_expr) \
             .submit(expression.Binary, self._solve_binary_expr)
 
+        CONSTEXPR_INTERPRETER.solver = self
+
     def solve(self):
         for stmt in self.statements:
             self._solver.visit(stmt)
 
+        self.variables.sort()
+
     def is_defined(self, identifier):
         return self.variables.is_defined(identifier)
 
-    def define(self, scope, identifier, value):
-        self.variables.define(scope, identifier, value)
+    def define(self, scope, identifier, value, line_declaration):
+        self.variables.define(scope, identifier, value, line_declaration)
 
     def read(self, identifier):
         variable = self.variables.read(identifier)
@@ -70,11 +74,15 @@ class VariableSolver:
 
 # region Statements
 
+
     def _solve_print_stmt(self, stmt):
         value = value_from_token(stmt.string_token)
         identifier = anonymous_identifier(value)
         if not self.is_defined(identifier):
-            self.define(variables.VariableScope.TEMPORAL, identifier, value)
+            token = stmt.string_token
+            line_declaration = (token.line, token.column)
+            self.define(variables.VariableScope.TEMPORAL,
+                        identifier, value, line_declaration)
 
     def _solve_expression_stmt(self, stmt):
         self._solver.visit(stmt.expr)
@@ -110,11 +118,17 @@ class VariableSolver:
         assert not self.is_defined(identifier), \
             "STORE variable '{}' already defined".format(identifier)
 
-        self.define(variables.VariableScope.STORE, identifier, value)
+        token = stmt.assignment_stmt.identifier_token
+        line_declaration = (token.line, token.column)
+        self.define(variables.VariableScope.STORE,
+                    identifier, value, line_declaration)
 
     def _solve_assignment_stmt(self, stmt):
         identifier = identifier_from_token(stmt.identifier_token)
-        value = self._solver.visit(stmt.assignment_expr)
+        try:
+            value = CONSTEXPR_INTERPRETER.visit(stmt.assignment_expr)
+        except NotConstExprException:
+            value = self._solver.visit(stmt.assignment_expr)
 
         assert value.value_type not in [variables.STRING_TYPE, variables.STRING_PTR_TYPE], \
             "Can't store strings"
@@ -124,8 +138,12 @@ class VariableSolver:
             assert value.value_type == variable.value.value_type, \
                 "Variable '{}' types aren't compatible".format(identifier)
         else:
-            value.literal = 0   # Not necessary, but assures uniformity
-            self.define(variables.VariableScope.TEMPORAL, identifier, value)
+            # None is used to indicate the variable holds a non-constant value
+            #   and therefore we need to execute the given instructions
+            token = stmt.identifier_token
+            line_declaration = (token.line, token.column)
+            self.define(variables.VariableScope.TEMPORAL,
+                        identifier, value, line_declaration)
 
     def _solve_block_stmt(self, stmt):
         for inner_stmt in stmt.statements:
@@ -146,7 +164,10 @@ class VariableSolver:
         value = value_from_token(stmt.string_token)
         identifier = anonymous_identifier(value)
         if not self.is_defined(identifier):
-            self.define(variables.VariableScope.TEMPORAL, identifier, value)
+            token = stmt.string_token
+            line_declaration = (token.line, token.column)
+            self.define(variables.VariableScope.TEMPORAL,
+                        identifier, value, line_declaration)
 
         self._solver.visit(stmt.block_stmt)
 
@@ -193,10 +214,11 @@ class VariableSolver:
         assert prototype.compatible_args(args), \
             "Provided arguments aren't compatible with function {}. Provided: {}".format(
                 prototype, args)
-            
+
         prototype.called = True
 
-        return variables.Value(prototype.return_type, 0)
+        # None to indicate unknown value
+        return variables.Value(prototype.return_type, None)
 
     def _solve_unary_expr(self, expr):
         value = self._solver.visit(expr.expr)

@@ -192,14 +192,15 @@ class Offsets:
         self.used_variables.add(identifier)
         return Offsets.OffsetInstruction(op_code, identifier, self)
 
-    def count_integers(self, solver: vs.VariableSolver):
-        n_ints = 0
+    def count_store_integers(self, solver: vs.VariableSolver):
+        n_store_ints = 0
         for identifier in self.used_variables:
             variable = solver.read(identifier)
-            if variable.value.value_type == variables.INT_TYPE:
-                n_ints += 1
+            value = variable.value
+            if value.value_type == variables.INT_TYPE and variable.scope == variables.VariableScope.STORE:
+                n_store_ints += 1
 
-        return n_ints
+        return n_store_ints
 
 
 class Option:
@@ -276,7 +277,8 @@ class Program:
                 identifier = vs.anonymous_identifier(value)
                 if not self.solver.is_defined(identifier):
                     self.solver.define(
-                        variables.VariableScope.TEMPORAL, identifier, value)
+                        variables.VariableScope.TEMPORAL, identifier, value,
+                        variable.line_declaration)
 
         return strings
 
@@ -432,10 +434,19 @@ class Program:
         # -- STACK --
         # Value to write
 
-        self._transpiler.visit(stmt.assignment_expr)
+        token = stmt.identifier_token
+        line_declaration = (token.line, token.column)
 
         identifier = vs.identifier_from_token(stmt.identifier_token)
         variable = self.solver.read(identifier)
+        if variable.scope == variables.VariableScope.TEMPORAL and variable.value.literal != None and \
+                variable.line_declaration == line_declaration:
+            # Means this temporal value has constant value and this is where it was
+            # first declared, therefore there's no need to transpile the statement
+            return
+        else:
+            self._transpiler.visit(stmt.assignment_expr)
+
         if variable.scope in [variables.VariableScope.GLOBAL_DECLARE,
                               variables.VariableScope.GLOBAL_DEFINE]:
             op_code = inst.OpCode.WRITEG
