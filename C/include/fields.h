@@ -7,7 +7,7 @@
 
 //* HEADER *//
 #define HEADER_OPTIONS_COUNT_MASK 0xFFFF0000
-#define HEADER_INTEGERS_COUNT_MASK 0x0000FFFF
+#define HEADER_STORE_INTEGERS_COUNT_MASK 0x0000FFFF
 #define HEADER_INSTRUCTIONS_OFFSET_MASK 0xFFFFFF00
 #define HEADER_STACK_SIZE_MASK 0x000000FF
 
@@ -15,7 +15,7 @@ typedef uint64_t vm_header_t;
 typedef struct Header_st
 {
     uint16_t options_count;
-    uint16_t integers_count;
+    uint16_t store_integers_count;
     uint32_t instructions_offset;
     uint8_t stack_size;
 } Header;
