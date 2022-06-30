@@ -25,7 +25,14 @@ class Color(funcs.Function):
                          [variables.INT_TYPE, variables.INT_TYPE, variables.INT_TYPE])
 
 
+class PreviousColor(funcs.Function):
+
+    def __init__(self):
+        super().__init__("previous_color", variables.STRING_PTR_TYPE, [])
+
+
 prototypes = funcs.FunctionPrototypes()
 prototypes.define(CustomAdd())
 prototypes.define(Name())
 prototypes.define(Color())
+prototypes.define(PreviousColor())
