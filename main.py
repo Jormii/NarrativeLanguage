@@ -1,3 +1,5 @@
+import os
+import glob
 import json
 
 from multiprogram import MultiProgram, Source
@@ -7,7 +9,13 @@ DEBUG = True
 
 
 def main():
-    yarn_files = ["YarnCollection.json"]
+    yarn_dir = "PATH TO DIR THAT STORES YARN JSONS"
+
+    cwd = os.getcwd()
+    os.chdir(yarn_dir)
+    yarn_files = glob.glob("*.json")
+    yarn_files = [os.path.join(yarn_dir, p) for p in yarn_files]
+    os.chdir(cwd)
 
     scenes = {}
     for yarn_file in yarn_files:
