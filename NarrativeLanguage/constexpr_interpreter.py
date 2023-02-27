@@ -180,7 +180,7 @@ def _constexpr_literal(expr):
 
 
 def _constexpr_variable(expr):
-    exit("Reading variables is not constexpr")
+    raise NotConstExprException("Reading variables is not constexpr")
 
 
 def _constexpr_function_call(expr):
